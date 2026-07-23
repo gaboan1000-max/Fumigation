@@ -193,7 +193,7 @@ def obtener_conversacion(user1, user2):
     return msgs
 
 # =============================================================================
-# 3. ESTILOS Y ANIMACIONES CSS (Optimizados para Móvil y PC)
+# 3. ESTILOS Y ANIMACIONES CSS
 # =============================================================================
 def aplicar_estilos_sidebar():
     st.markdown("""
@@ -214,7 +214,6 @@ def aplicar_estilos_sidebar():
                 background-color: #1a1c23;
                 animation: sidebarSlideIn 0.40s ease-out forwards;
             }
-            /* Animación de los elementos del menú en el Sidebar */
             [data-testid="stSidebar"] div[role="radiogroup"] label {
                 transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
                 border-radius: 8px;
@@ -261,22 +260,16 @@ def aplicar_estilos_sidebar():
                 margin-bottom: 10px;
                 padding-left: 5px;
             }
-
-            /* AJUSTES RESPONSIVOS PARA MÓVILES */
             @media (max-width: 768px) {
                 h1 { font-size: 1.8rem !important; line-height: 1.2 !important; }
                 h2 { font-size: 1.4rem !important; line-height: 1.2 !important; }
                 h3 { font-size: 1.1rem !important; }
-                
                 .main .block-container {
                     padding-top: 3.5rem !important; 
                     padding-left: 1rem !important;
                     padding-right: 1rem !important;
                 }
-                
-                .profile-card {
-                    margin-top: 35px; 
-                }
+                .profile-card { margin-top: 35px; }
             }
         </style>
     """, unsafe_allow_html=True)
@@ -347,7 +340,7 @@ def mostrar_catalogo_plagas_principal():
         with col_info:
             st.header("🪳 Cucaracha americana (*Periplaneta americana*)")
             st.markdown("""
-            La **cucaracha americana** (*Periplaneta americana*) es una de las especies de cucarachas más grandes y comunes en zonas urbanas. A pesar de su nombre, no es originaria de América; se cree que proviene de África y llegó al continente hace varios siglos a través del comercio marítimo.
+            La **cucaracha americana** (*Periplaneta americana*) es una de las especies de cucarachas más grandes y comunes en zonas urbanas. A pesar de su nombre, proviene de África y llegó al continente a través del comercio marítimo.
             """)
             st.info("""
             **Clasificación**  
@@ -372,8 +365,8 @@ def mostrar_catalogo_plagas_principal():
             st.markdown("""
             * **Tamaño:** Entre 3.5 y 5 cm de longitud.
             * **Color:** Marrón rojizo con una banda amarillenta detrás de la cabeza.
-            * **Alas:** Tanto machos como hembras tienen alas completamente desarrolladas y pueden planear o realizar vuelos cortos.
-            * **Velocidad:** Puede correr hasta 5.4 km/h, lo que la convierte en una de las cucarachas más rápidas.
+            * **Alas:** Machos y hembras poseen alas desarrolladas; pueden planear o realizar vuelos cortos.
+            * **Velocidad:** Puede correr hasta 5.4 km/h.
             """)
 
         with tab_hab:
@@ -389,75 +382,42 @@ def mostrar_catalogo_plagas_principal():
                 * Sótanos y bodegas.
                 * Cuartos de máquinas.
                 * Cocinas y baños.
-                * Basureros.
                 """)
 
         with tab_dieta:
             st.subheader("Alimentación")
             st.markdown("""
-            Es **omnívora y carroñera**, por lo que consume prácticamente cualquier materia orgánica.
-
-            **Su dieta incluye:**
-            * Restos de comida, pan y cereales.
-            * Frutas, verduras y carne.
-            * Papel, cartón y pegamento.
-            * Cuero.
-            * Alimento para mascotas.
-            * Materia orgánica en descomposición.
+            Es **omnívora y carroñera**. Su dieta incluye restos de comida, papel, cartón, pegamento, cuero y materia orgánica en descomposición.
             """)
 
         with tab_ciclo:
             st.subheader("Ciclo de Vida y Reproducción")
             st.markdown("""
-            La cucaracha americana presenta tres etapas de desarrollo:
-            """)
-            st.markdown("""
-            * **Huevo:** La hembra deposita los huevos dentro de una cápsula llamada **ooteca**. Cada ooteca contiene entre **14 y 16 huevos**.
-            * **Ninfa:** Al nacer son pequeñas y no tienen alas. Mudan su exoesqueleto entre **10 y 13 veces** antes de convertirse en adultas.
-            * **Adulto:** Puede vivir entre **1 y 2 años**, dependiendo de las condiciones ambientales.
-            """)
-            st.info("""
-            **Reproducción:** Una hembra puede producir entre **15 y 90 ootecas** durante su vida. Esto representa la posibilidad de cientos de descendientes si las condiciones son favorables.
+            * **Huevo:** Depositados en cápsulas llamadas **ootecas** (14 a 16 huevos por cápsula).
+            * **Ninfa:** Mudan su exoesqueleto de 10 a 13 veces.
+            * **Adulto:** Longevidad entre 1 y 2 años.
             """)
 
         with tab_salud:
             st.subheader("Importancia Sanitaria")
-            st.write("Aunque normalmente no pican a las personas, son consideradas una plaga porque pueden transportar microorganismos en sus patas y cuerpo, contaminando alimentos y superficies.")
-            
-            st.error("""
-            **Pueden contribuir a la dispersión de:**
-            * Bacterias como *Salmonella* y *Escherichia coli* (E. coli).
-            * Hongos y parásitos.
-            """)
-            
-            st.warning("""
-            **Riesgos para la salud:**  
-            Sus excrementos, saliva y partes del exoesqueleto pueden provocar **alergias** y **crisis de asma**, especialmente en niños y personas sensibles.
-            """)
+            st.error("Transportan patógenos en cuerpo y patas: *Salmonella*, *E. coli*, hongos y parásitos.")
+            st.warning("Sus excrementos y mudas pueden desencadenar alergias y episodios asmáticos.")
 
         with tab_curio:
             st.subheader("Curiosidades")
             st.markdown("""
-            * **Resistencia a la inanición:** Puede sobrevivir varias semanas sin alimento si dispone de agua.
-            * **Supervivencia sin cabeza:** Puede vivir aproximadamente una semana sin cabeza, ya que respira por pequeños orificios llamados espiráculos distribuidos en el cuerpo. Finalmente muere por deshidratación.
-            * **Hábitos nocturnos:** Es principalmente nocturna y evita la luz.
-            * **Sensibilidad:** Tiene antenas muy sensibles que le ayudan a detectar obstáculos, alimentos y depredadores.
-            * **Resistencia al agua:** Es capaz de soportar breves periodos de inmersión bajo el agua.
+            * Soporta semanas sin comer si dispone de agua.
+            * Puede sobrevivir hasta una semana sin cabeza (respira por espiráculos laterales).
+            * Hábitos mayoritariamente nocturnos.
             """)
 
         with tab_prev:
             st.subheader("Prevención y Control")
             st.markdown("""
-            Para evitar infestaciones se recomienda:
-            
-            1. Mantener los alimentos bien almacenados.
-            2. Sacar la basura diariamente.
-            3. Reparar fugas de agua.
-            4. Sellar grietas y rendijas.
-            5. Limpiar restos de comida y grasa.
-            6. Mantener limpios drenajes y alcantarillas.
-            
-            👉 *En infestaciones severas, recurrir a un servicio profesional de control de plagas.*
+            1. Almacenamiento hermético de alimentos.
+            2. Eliminación continua de residuos orgánicos.
+            3. Corrección de fugas de humedad.
+            4. Sellado de grietas y hendiduras estructurales.
             """)
 
 # =============================================================================
@@ -629,12 +589,10 @@ def vista_tecnico():
             st.session_state.mi_actividad = "Servicio de Fumigación en Proceso"
 
         nombre_tecnico = st.session_state.user['nombre']
-
         col_config, col_mapa = st.columns([1, 1])
 
         with col_config:
             st.markdown("### ⚙️ Actualizar mi Estado / Dirección")
-            
             st.markdown("**1. Detectar ubicación en tiempo real:**")
             html_gps_auto = """
                 <button onclick="obtenerGPS()" style="
@@ -659,7 +617,6 @@ def vista_tecnico():
                                 const lat = pos.coords.latitude;
                                 const lon = pos.coords.longitude;
                                 status.innerText = "✅ Ubicación obtenida. Recargando mapa...";
-                                
                                 const topUrl = window.top.location.href.split('?')[0];
                                 window.top.location.href = topUrl + '?lat=' + lat + '&lon=' + lon;
                             },
@@ -762,37 +719,41 @@ def vista_cliente():
         if st.button("🚪 Cerrar Sesión", use_container_width=True, type="secondary"):
             st.session_state.user = None
             st.rerun()
-    
+
     if opcion == "🏠 Inicio / Catálogo":
         mostrar_catalogo_plagas_principal()
 
     elif opcion == "📋 Mis Tratamientos":
-        st.subheader("📄 Reportes de Fumigación")
-        mis_reportes = obtener_reportes_cliente(st.session_state.user['nombre'])
-        for r in mis_reportes:
-            st.markdown("---")
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                st.markdown(f"### Servicio en: **{r[1]}**")
-                st.write(f"**Fecha:** {r[6][:10]} | **Plaga:** {r[3]}")
-                st.write(f"**Tratamiento:** {r[4]}")
-            with col2:
-                if r[7] and os.path.exists(r[7]):
-                    st.image(r[7], width=200)
+        st.subheader("📋 Mis Tratamientos y Servicios Aplicados")
+        reportes = obtener_reportes_cliente(st.session_state.user['nombre'])
+        
+        if reportes:
+            for r in reportes:
+                with st.expander(f"📌 Servicio #{r[0]} - Fecha: {r[6][:10]}"):
+                    st.write(f"**Técnico a cargo:** {r[2]}")
+                    st.write(f"**Tipo de Plaga:** {r[3]}")
+                    st.write(f"**Tratamiento:** {r[4]}")
+                    st.write(f"**Estatus:** `{r[5]}`")
+                    if r[7] and os.path.exists(r[7]):
+                        st.image(r[7], caption="Evidencia del servicio", width=300)
+        else:
+            st.info("No se encontraron registros de servicios previos vinculados a tu cuenta.")
 
     elif opcion == "💬 Mensajería":
         mostrar_modulo_chat()
 
 # =============================================================================
-# 7. EJECUCIÓN PRINCIPAL
+# 7. CONTROLADOR PRINCIPAL DE LA APLICACIÓN
 # =============================================================================
-if st.session_state.user is None:
-    mostrar_autenticacion()
-else:
-    st.title("🐢 Gestión de Fumigaciones")
-    st.markdown("---")
-
-    if st.session_state.user['rol'] == "Técnico":
-        vista_tecnico()
+def main():
+    if st.session_state.user is None:
+        mostrar_autenticacion()
     else:
-        vista_cliente()
+        rol = st.session_state.user.get('rol', 'Cliente')
+        if rol == "Técnico":
+            vista_tecnico()
+        else:
+            vista_cliente()
+
+if __name__ == "__main__":
+    main()
