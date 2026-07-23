@@ -15,7 +15,7 @@ st.set_page_config(
     page_title="Gestión de Fumigaciones & Control de Plagas",
     page_icon=FAVICON,
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"  # Iniciamos colapsado en móvil para mejor UX
 )
 
 DB_NAME = "fumigaciones.db"
@@ -193,71 +193,88 @@ def obtener_conversacion(user1, user2):
     return msgs
 
 # =============================================================================
-# 3. ESTILOS Y ANIMACIONES CSS
+# 3. ESTILOS Y ANIMACIONES CSS RESPONSIVAS
 # =============================================================================
 def aplicar_estilos_sidebar():
     st.markdown("""
         <style>
-            @keyframes fadeInSlideUp {
-                0% { opacity: 0; transform: translateY(18px); }
-                100% { opacity: 1; transform: translateY(0); }
-            }
-            @keyframes sidebarSlideIn {
-                0% { opacity: 0; transform: translateX(-25px); }
-                100% { opacity: 1; transform: translateX(0); }
-            }
+            /* Ajustes globales de padding */
             .main .block-container {
-                animation: fadeInSlideUp 0.45s ease-out forwards;
+                padding-top: 1rem !important;
+                padding-bottom: 2rem !important;
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+                max-width: 100% !important;
             }
+
+            /* Adaptación para pantallas móviles (Smartphones) */
+            @media (max-width: 768px) {
+                h1 {
+                    font-size: 1.6rem !important;
+                    word-wrap: break-word;
+                }
+                h2 {
+                    font-size: 1.3rem !important;
+                }
+                h3 {
+                    font-size: 1.1rem !important;
+                }
+                .stButton button {
+                    width: 100% !important;
+                }
+                /* Corrección de superposición del Sidebar */
+                [data-testid="stSidebar"] {
+                    background-color: #1a1c23 !important;
+                    box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+                }
+            }
+
+            /* Estilos generales del Sidebar */
             [data-testid="stSidebar"] {
                 background-color: #1a1c23;
-                animation: sidebarSlideIn 0.40s ease-out forwards;
             }
             [data-testid="stSidebar"] div[role="radiogroup"] label {
-                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: all 0.25s ease;
                 border-radius: 8px;
-                padding: 6px 10px;
+                padding: 8px 10px;
+                margin-bottom: 2px;
             }
             [data-testid="stSidebar"] div[role="radiogroup"] label:hover {
                 background-color: rgba(255, 255, 255, 0.08);
-                transform: translateX(5px);
             }
             .profile-card {
                 background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-                padding: 16px;
+                padding: 14px;
                 border-radius: 12px;
                 border: 1px solid #4a5568;
                 text-align: center;
-                margin-top: 10px;
-                margin-bottom: 20px;
-                box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+                margin-top: 5px;
+                margin-bottom: 15px;
             }
             .profile-name {
                 color: #ffffff;
                 font-weight: 700;
-                font-size: 1.1rem;
-                margin: 5px 0 0 0;
+                font-size: 1rem;
+                margin: 0;
             }
             .profile-role {
                 display: inline-block;
                 background-color: #319795;
                 color: #ffffff;
-                font-size: 0.75rem;
+                font-size: 0.7rem;
                 font-weight: 600;
-                padding: 3px 12px;
-                border-radius: 15px;
-                margin-top: 6px;
+                padding: 2px 10px;
+                border-radius: 12px;
+                margin-top: 5px;
                 text-transform: uppercase;
-                letter-spacing: 0.8px;
             }
             .menu-title {
                 color: #a0aec0;
-                font-size: 0.75rem;
+                font-size: 0.7rem;
                 font-weight: 700;
                 text-transform: uppercase;
-                letter-spacing: 1.2px;
-                margin-bottom: 10px;
-                padding-left: 5px;
+                letter-spacing: 1px;
+                margin-bottom: 8px;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -268,11 +285,11 @@ def mostrar_modulo_chat():
     contactos = obtener_contactos_disponibles(mi_nombre)
     
     if not contactos:
-        st.info("Aún no hay otros usuarios registrados en la plataforma para chatear.")
+        st.info("Aún no hay otros usuarios registrados para chatear.")
         return
 
     lista_contactos = [f"{nombre} ({rol})" for nombre, rol in contactos]
-    contacto_seleccionado = st.selectbox("Selecciona un contacto para conversar:", lista_contactos)
+    contacto_seleccionado = st.selectbox("Selecciona un contacto:", lista_contactos)
     nombre_destinatario = contacto_seleccionado.split(" (")[0]
     
     st.markdown("---")
@@ -302,39 +319,38 @@ def mostrar_modulo_chat():
 # 4. CATÁLOGO DE PLAGAS
 # =============================================================================
 def mostrar_catalogo_plagas_principal():
-    st.title("🪳 Enciclopedia Profesional de Plagas")
-    st.caption("Base de conocimiento para identificación, biología y control técnico de infestaciones.")
+    st.title("🪳 Enciclopedia de Plagas")
+    st.caption("Base de conocimiento para identificación y control de infestaciones.")
     
     plaga_seleccionada = st.selectbox(
-        "🔍 Selecciona una especie para ver su ficha técnica:",
+        "🔍 Selecciona una especie:",
         ["Cucaracha americana (Periplaneta americana)", "Próximamente más plagas..."]
     )
     
     if plaga_seleccionada == "Cucaracha americana (Periplaneta americana)":
         st.markdown("---")
+        
+        # En móviles se apilan automáticamente
         col_img, col_info = st.columns([1, 1])
         
         with col_img:
             if os.path.exists("cucaracha_americana.jpg"):
-                st.image("cucaracha_americana.jpg", caption="Infografía Técnica: Cucaracha Americana", use_container_width=True)
+                st.image("cucaracha_americana.jpg", caption="Cucaracha Americana", use_container_width=True)
             else:
-                st.info("💡 Guarda la imagen 'cucaracha_americana.jpg' en la carpeta raíz.")
-                uploaded_img = st.file_uploader("O sube la infografía aquí:", type=["jpg", "png", "jpeg"], key="infografia_cucaracha")
+                st.info("💡 Guarda 'cucaracha_americana.jpg' en la raíz.")
+                uploaded_img = st.file_uploader("O sube la infografía:", type=["jpg", "png", "jpeg"], key="infografia_cucaracha")
                 if uploaded_img:
                     with open("cucaracha_americana.jpg", "wb") as f:
                         f.write(uploaded_img.getbuffer())
                     st.rerun()
 
         with col_info:
-            st.header("🪳 Cucaracha americana (*Periplaneta americana*)")
-            st.markdown("""
-            La **cucaracha americana** es una de las especies de cucarachas más grandes y comunes en zonas urbanas.
-            """)
+            st.subheader("Cucaracha americana (*Periplaneta americana*)")
+            st.markdown("Especie urbana de gran tamaño y hábito nocturno.")
             st.info("""
             **Clasificación Técnica**  
-            • **Nombre científico:** Periplaneta americana  
-            • **Orden:** Blattodea  
-            • **Familia:** Blattidae  
+            • **Científico:** Periplaneta americana  
+            • **Orden:** Blattodea | **Familia:** Blattidae  
             • **Riesgo:** Alto (Sanitario)
             """)
 
@@ -344,37 +360,25 @@ def mostrar_catalogo_plagas_principal():
 
         st.markdown("---")
         tab_bio, tab_hab, tab_ciclo, tab_salud, tab_curio, tab_prev = st.tabs([
-            "📌 Características", "🏠 Hábitat y Dieta", "🔄 Ciclo de Vida", 
-            "⚠️ Importancia Sanitaria", "💡 Curiosidades", "🛡️ Prevención y Control"
+            "📌 Físico", "🏠 Hábitat", "🔄 Ciclo", "⚠️ Salud", "💡 Datos", "🛡️ Control"
         ])
 
         with tab_bio:
-            st.subheader("Características Físicas")
             st.markdown("* **Tamaño:** 3.5 a 5 cm\n* **Color:** Marrón rojizo\n* **Velocidad:** 5.4 km/h")
 
         with tab_hab:
-            col_h1, col_h2 = st.columns(2)
-            with col_h1:
-                st.subheader("🏠 Hábitat")
-                st.markdown("* Alcantarillas\n* Sótanos\n* Cocinas")
-            with col_h2:
-                st.subheader("🍞 Dieta")
-                st.markdown("* Restos de comida\n* Cartón y materia en descomposición")
+            st.markdown("**Hábitat:** Alcantarillas, sótanos, cocinas.\n\n**Dieta:** Materia orgánica y desperdicios.")
 
         with tab_ciclo:
-            st.subheader("🔄 Ciclo de Vida")
-            st.write("Ooteca (14-16 huevos) -> Ninfa -> Adulto (1-2 años).")
+            st.write("Ooteca (14-16 huevos) ➔ Ninfa ➔ Adulto (1-2 años).")
 
         with tab_salud:
-            st.subheader("⚠️ Riesgos")
             st.error("Vector de Salmonella, E. coli y alérgenos.")
 
         with tab_curio:
-            st.subheader("💡 Curiosidades")
-            st.markdown("* Puede vivir semanas sin comer.\n* Resiste días sin cabeza.")
+            st.markdown("* Vive semanas sin comer.\n* Sobrevive días sin cabeza.")
 
         with tab_prev:
-            st.subheader("🛡️ Prevención")
             st.success("Higiene constante, sellado de grietas y control profesional.")
 
 # =============================================================================
@@ -384,52 +388,56 @@ if "user" not in st.session_state:
     st.session_state.user = None
 
 def mostrar_autenticacion():
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if os.path.exists("tortuga.png"):
-            st.image("tortuga.png", width=140)
+    aplicar_estilos_sidebar()
+    
+    # Ajuste responsivo para el Login
+    st.markdown("<br>", unsafe_allow_html=True)
+    if os.path.exists("tortuga.png"):
+        col_l1, col_l2, col_l3 = st.columns([1, 1, 1])
+        with col_l2:
+            st.image("tortuga.png", width=100)
             
-        st.markdown("<h2 style='text-align: center;'>Gestión de Fumigaciones</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: gray;'>Plataforma Integral de Control de Plagas</p>", unsafe_allow_html=True)
-        
-        tab_login, tab_registro = st.tabs(["🔑 Iniciar Sesión", "📝 Crear Cuenta"])
-        
-        with tab_login:
-            with st.form("form_login"):
-                correo = st.text_input("Correo electrónico")
-                password = st.text_input("Contraseña", type="password")
-                submit = st.form_submit_button("Entrar", type="primary", use_container_width=True)
-                
-                if submit:
-                    user_data = login_usuario(correo, password)
-                    if user_data:
-                        st.session_state.user = {
-                            "id": user_data[0],
-                            "nombre": user_data[1],
-                            "correo": user_data[2],
-                            "rol": user_data[4],
-                            "telefono": user_data[5]
-                        }
-                        st.rerun()
-                    else:
-                        st.error("Correo o contraseña incorrectos.")
+    st.markdown("<h2 style='text-align: center;'>Gestión de Fumigaciones</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Plataforma Integral</p>", unsafe_allow_html=True)
+    
+    tab_login, tab_registro = st.tabs(["🔑 Iniciar Sesión", "📝 Crear Cuenta"])
+    
+    with tab_login:
+        with st.form("form_login"):
+            correo = st.text_input("Correo electrónico")
+            password = st.text_input("Contraseña", type="password")
+            submit = st.form_submit_button("Entrar", type="primary", use_container_width=True)
+            
+            if submit:
+                user_data = login_usuario(correo, password)
+                if user_data:
+                    st.session_state.user = {
+                        "id": user_data[0],
+                        "nombre": user_data[1],
+                        "correo": user_data[2],
+                        "rol": user_data[4],
+                        "telefono": user_data[5]
+                    }
+                    st.rerun()
+                else:
+                    st.error("Correo o contraseña incorrectos.")
 
-        with tab_registro:
-            with st.form("form_registro"):
-                nuevo_nombre = st.text_input("Nombre Completo / Empresa")
-                nuevo_correo = st.text_input("Correo Electrónico")
-                nuevo_telefono = st.text_input("Teléfono")
-                nuevo_rol = st.selectbox("Tipo de Usuario", ["Cliente", "Técnico"])
-                pass1 = st.text_input("Contraseña", type="password")
-                pass2 = st.text_input("Confirmar Contraseña", type="password")
-                
-                reg_submit = st.form_submit_button("Registrarse", use_container_width=True)
-                if reg_submit:
-                    if pass1 == pass2 and nuevo_nombre and nuevo_correo:
-                        if agregar_usuario(nuevo_nombre, nuevo_correo, pass1, nuevo_rol, nuevo_telefono):
-                            st.success("Cuenta creada exitosamente.")
-                        else:
-                            st.error("El correo ya existe.")
+    with tab_registro:
+        with st.form("form_registro"):
+            nuevo_nombre = st.text_input("Nombre / Empresa")
+            nuevo_correo = st.text_input("Correo Electrónico")
+            nuevo_telefono = st.text_input("Teléfono")
+            nuevo_rol = st.selectbox("Tipo de Usuario", ["Cliente", "Técnico"])
+            pass1 = st.text_input("Contraseña", type="password")
+            pass2 = st.text_input("Confirmar Contraseña", type="password")
+            
+            reg_submit = st.form_submit_button("Registrarse", use_container_width=True)
+            if reg_submit:
+                if pass1 == pass2 and nuevo_nombre and nuevo_correo:
+                    if agregar_usuario(nuevo_nombre, nuevo_correo, pass1, nuevo_rol, nuevo_telefono):
+                        st.success("Cuenta creada exitosamente.")
+                    else:
+                        st.error("El correo ya existe.")
 
 # =============================================================================
 # 6. VISTAS PRINCIPALES
@@ -439,47 +447,44 @@ def vista_tecnico():
     
     with st.sidebar:
         if os.path.exists("tortuga.png"):
-            st.image("tortuga.png", use_container_width=True)
+            st.image("tortuga.png", width=80)
             
         st.markdown(f"""
             <div class="profile-card">
                 <div class="profile-name">{st.session_state.user['nombre']}</div>
-                <div class="profile-role">Técnico Especialista</div>
+                <div class="profile-role">Técnico</div>
             </div>
-            <div class="menu-title">Navegación Principal</div>
+            <div class="menu-title">Menú Principal</div>
         """, unsafe_allow_html=True)
     
-    opcion = st.sidebar.radio(
-        "", 
-        [
-            "🏠 Inicio / Catálogo de Plagas",
-            "➕ Registrar Servicio", 
-            "👥 Gestión de Clientes", 
-            "📊 Historial & Reportes", 
-            "📍 Mi Ubicación Real", 
-            "💬 Mensajería Interna"
-        ],
-        label_visibility="collapsed"
-    )
+        opcion = st.radio(
+            "", 
+            [
+                "🏠 Inicio / Catálogo",
+                "➕ Registrar Servicio", 
+                "👥 Gestión Clientes", 
+                "📊 Historial & Reportes", 
+                "📍 Ubicación Real", 
+                "💬 Mensajería"
+            ],
+            label_visibility="collapsed"
+        )
     
-    if opcion == "🏠 Inicio / Catálogo de Plagas":
+    if opcion == "🏠 Inicio / Catálogo":
         mostrar_catalogo_plagas_principal()
 
     elif opcion == "➕ Registrar Servicio":
-        st.subheader("📝 Registrar Servicio de Fumigación")
+        st.subheader("📝 Registrar Fumigación")
         lista_clientes = obtener_lista_clientes()
         
         with st.form("registro_fumigacion", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            with col1:
-                cliente = st.selectbox("Cliente / Local", options=lista_clientes if lista_clientes else ["Sin clientes"])
-                plaga = st.text_input("Tipo de Plaga", placeholder="Ej. Cucaracha, Roedores")
-                estatus = st.selectbox("Estatus", ["Completado", "En Proceso", "Seguimiento Requerido"])
-            with col2:
-                tratamiento = st.text_area("Tratamiento Aplicado")
-                evidencia = st.file_uploader("Evidencia Fotográfica", type=["jpg", "png", "jpeg"])
+            cliente = st.selectbox("Cliente / Local", options=lista_clientes if lista_clientes else ["Sin clientes"])
+            plaga = st.text_input("Tipo de Plaga", placeholder="Ej. Cucaracha, Roedores")
+            estatus = st.selectbox("Estatus", ["Completado", "En Proceso", "Seguimiento Requerido"])
+            tratamiento = st.text_area("Tratamiento Aplicado")
+            evidencia = st.file_uploader("Evidencia Fotográfica", type=["jpg", "png", "jpeg"])
                 
-            guardar = st.form_submit_button("Guardar Reporte", type="primary")
+            guardar = st.form_submit_button("Guardar Reporte", type="primary", use_container_width=True)
             if guardar and cliente != "Sin clientes":
                 file_path = None
                 if evidencia:
@@ -489,16 +494,16 @@ def vista_tecnico():
                 guardar_reporte(cliente, st.session_state.user['nombre'], plaga, tratamiento, estatus, file_path)
                 st.success("✅ Guardado correctamente.")
 
-    elif opcion == "👥 Gestión de Clientes":
-        st.subheader("👥 Gestión de Clientes")
-        tab1, tab2 = st.tabs(["➕ Agregar Cliente", "📋 Directorio"])
+    elif opcion == "👥 Gestión Clientes":
+        st.subheader("👥 Clientes")
+        tab1, tab2 = st.tabs(["➕ Agregar", "📋 Directorio"])
         with tab1:
             with st.form("form_nuevo_cliente", clear_on_submit=True):
                 nom_local = st.text_input("Nombre del Local")
                 resp = st.text_input("Responsable")
                 tel = st.text_input("Teléfono")
                 direc = st.text_input("Dirección")
-                if st.form_submit_button("Guardar"):
+                if st.form_submit_button("Guardar Cliente", use_container_width=True):
                     if agregar_cliente_db(nom_local, resp, tel, direc):
                         st.success("Cliente registrado.")
         with tab2:
@@ -511,148 +516,133 @@ def vista_tecnico():
     elif opcion == "📊 Historial & Reportes":
         st.subheader("📋 Historial de Servicios")
         for r in obtener_todos_reportes():
-            with st.expander(f"📌 Servicio #{r[0]} - {r[1]} ({r[6][:10]})"):
+            with st.expander(f"📌 Servicio #{r[0]} - {r[1]}"):
+                st.caption(f"Fecha: {r[6][:10]}")
                 st.write(f"**Técnico:** {r[2]} | **Plaga:** {r[3]}")
                 st.write(f"**Tratamiento:** {r[4]}")
                 if r[7] and os.path.exists(r[7]):
-                    st.image(r[7], width=250)
+                    st.image(r[7], use_container_width=True)
 
-    elif opcion == "📍 Mi Ubicación Real":
-        st.subheader("📍 Control de Ubicación del Técnico")
+    elif opcion == "📍 Ubicación Real":
+        st.subheader("📍 Ubicación del Técnico")
         
-        # Coordenadas exactas obtenidas de tu enlace de Google Maps (Las Mercedes, Playas del Rosario)
         EXACT_LAT = 17.867755
         EXACT_LON = -92.929815
-        EXACT_DIR = "Las Mercedes, 86288 Playas del Rosario, Tabasco"
+        EXACT_DIR = "Las Mercedes, Playas del Rosario, Tabasco"
 
-        # Leer parámetros de URL si el GPS detecta nueva ubicación
         params = st.query_params
         if "lat" in params and "lon" in params:
             try:
                 st.session_state.mi_lat = float(params["lat"])
                 st.session_state.mi_lon = float(params["lon"])
-                st.session_state.mi_direccion = "Ubicación detectada por GPS actual"
+                st.session_state.mi_direccion = "GPS Detectado"
             except ValueError:
                 pass
 
-        # Inicializar estado con tus coordenadas exactas
         if "mi_lat" not in st.session_state:
             st.session_state.mi_lat = EXACT_LAT
             st.session_state.mi_lon = EXACT_LON
             st.session_state.mi_direccion = EXACT_DIR
             st.session_state.mi_estatus = "🟢 En Servicio"
-            st.session_state.mi_actividad = "Servicio de Fumigación en Proceso"
+            st.session_state.mi_actividad = "Servicio en Proceso"
 
         nombre_tecnico = st.session_state.user['nombre']
 
-        col_config, col_mapa = st.columns([1, 1])
-
-        with col_config:
-            st.markdown("### ⚙️ Actualizar mi Estado / Dirección")
-            
-            # Botón e inyección JS para capturar GPS exacto
-            st.markdown("**1. Detectar ubicación en tiempo real:**")
-            html_gps_auto = """
-                <button onclick="obtenerGPS()" style="
-                    background-color: #319795;
-                    color: white;
-                    border: none;
-                    padding: 12px 20px;
-                    border-radius: 8px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    width: 100%;
-                    font-size: 1rem;
-                ">📡 Capturar mi Posición Exacta (GPS)</button>
-                <p id="status_gps" style="color: #a0aec0; font-size: 0.85rem; margin-top: 8px; font-weight: 500;"></p>
-                <script>
-                function obtenerGPS() {
-                    const status = document.getElementById('status_gps');
-                    if (navigator.geolocation) {
-                        status.innerText = "🔍 Localizando dispositivo con precisión alta...";
-                        navigator.geolocation.getCurrentPosition(
-                            function(pos) {
-                                const lat = pos.coords.latitude;
-                                const lon = pos.coords.longitude;
-                                status.innerText = "✅ Ubicación obtenida. Recargando mapa...";
-                                
-                                const topUrl = window.top.location.href.split('?')[0];
-                                window.top.location.href = topUrl + '?lat=' + lat + '&lon=' + lon;
-                            },
-                            function(err) {
-                                status.innerText = "⚠️ Error consultando GPS. Revisa los permisos de ubicación de tu navegador.";
-                            },
-                            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-                        );
-                    } else {
-                        status.innerText = "❌ Navegador no compatible con geolocalización.";
-                    }
+        # Disposición optimizada para móviles (se apila verticalmente)
+        st.markdown("### ⚙️ Actualizar Estado / GPS")
+        
+        html_gps_auto = """
+            <button onclick="obtenerGPS()" style="
+                background-color: #319795;
+                color: white;
+                border: none;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-weight: bold;
+                cursor: pointer;
+                width: 100%;
+                font-size: 0.9rem;
+            ">📡 Capturar Posición Exacta (GPS)</button>
+            <p id="status_gps" style="color: #a0aec0; font-size: 0.8rem; margin-top: 6px;"></p>
+            <script>
+            function obtenerGPS() {
+                const status = document.getElementById('status_gps');
+                if (navigator.geolocation) {
+                    status.innerText = "🔍 Buscando GPS...";
+                    navigator.geolocation.getCurrentPosition(
+                        function(pos) {
+                            const lat = pos.coords.latitude;
+                            const lon = pos.coords.longitude;
+                            status.innerText = "✅ Ubicación obtenida.";
+                            const topUrl = window.top.location.href.split('?')[0];
+                            window.top.location.href = topUrl + '?lat=' + lat + '&lon=' + lon;
+                        },
+                        function(err) {
+                            status.innerText = "⚠️ Activa el GPS de tu navegador.";
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                } else {
+                    status.innerText = "❌ GPS no soportado.";
                 }
-                </script>
+            }
+            </script>
+        """
+        components.html(html_gps_auto, height=90)
+
+        with st.form("form_ubicacion_tecnico"):
+            nueva_dir = st.text_input("Dirección:", value=st.session_state.mi_direccion)
+            nuevo_estatus = st.selectbox("Estatus:", ["🟢 En Servicio", "🟡 En Trayecto", "🔴 Disponible / Base"])
+            nueva_actividad = st.text_input("Actividad:", value=st.session_state.mi_actividad)
+            
+            c_lat, c_lon = st.columns(2)
+            with c_lat:
+                n_lat = st.number_input("Latitud:", value=float(st.session_state.mi_lat), format="%.6f")
+            with c_lon:
+                n_lon = st.number_input("Longitud:", value=float(st.session_state.mi_lon), format="%.6f")
+
+            btn_actualizar = st.form_submit_button("💾 Guardar y Centrar Mapa", type="primary", use_container_width=True)
+            if btn_actualizar:
+                st.session_state.mi_direccion = nueva_dir
+                st.session_state.mi_estatus = nuevo_estatus
+                st.session_state.mi_actividad = nueva_actividad
+                st.session_state.mi_lat = n_lat
+                st.session_state.mi_lon = n_lon
+                st.query_params.clear()
+                st.success("✅ Guardado.")
+                st.rerun()
+
+        st.markdown("---")
+        st.markdown("### 🗺️ Mapa")
+        st.info(f"""
+        👤 **Técnico:** {nombre_tecnico}  
+        📍 **Dirección:** {st.session_state.mi_direccion}  
+        📊 **Estatus:** `{st.session_state.mi_estatus}`  
+        """)
+
+        tab_gmaps, tab_native = st.tabs(["🗺️ Google Maps", "🔴 Mapa Punto"])
+
+        with tab_gmaps:
+            gmaps_iframe = f"""
+                <iframe 
+                    width="100%" 
+                    height="320" 
+                    style="border:0; border-radius:10px;" 
+                    loading="lazy" 
+                    allowfullscreen
+                    src="https://maps.google.com/maps?q={st.session_state.mi_lat},{st.session_state.mi_lon}&hl=es&z=16&output=embed">
+                </iframe>
             """
-            components.html(html_gps_auto, height=100)
+            components.html(gmaps_iframe, height=330)
 
-            st.markdown("---")
-            st.markdown("**2. Modificar información o coordenadas manualmente:**")
-            
-            with st.form("form_ubicacion_tecnico"):
-                nueva_dir = st.text_input("Dirección / Referencia escrita:", value=st.session_state.mi_direccion)
-                nuevo_estatus = st.selectbox("Estatus actual:", ["🟢 En Servicio", "🟡 En Trayecto", "🔴 Disponible / Base"], index=0)
-                nueva_actividad = st.text_input("Actividad actual:", value=st.session_state.mi_actividad)
-                
-                c_lat, c_lon = st.columns(2)
-                with c_lat:
-                    n_lat = st.number_input("Latitud:", value=float(st.session_state.mi_lat), format="%.6f")
-                with c_lon:
-                    n_lon = st.number_input("Longitud:", value=float(st.session_state.mi_lon), format="%.6f")
+        with tab_native:
+            df_mapa = pd.DataFrame([{
+                "lat": float(st.session_state.mi_lat),
+                "lon": float(st.session_state.mi_lon)
+            }])
+            st.map(df_mapa, zoom=15)
 
-                btn_actualizar = st.form_submit_button("💾 Guardar y Centrar Mapa", type="primary")
-                if btn_actualizar:
-                    st.session_state.mi_direccion = nueva_dir
-                    st.session_state.mi_estatus = nuevo_estatus
-                    st.session_state.mi_actividad = nueva_actividad
-                    st.session_state.mi_lat = n_lat
-                    st.session_state.mi_lon = n_lon
-                    st.query_params.clear()
-                    st.success("✅ Mapa centrado y datos actualizados.")
-                    st.rerun()
-
-        with col_mapa:
-            st.markdown("### 🗺️ Vista del Mapa al estilo Google Maps")
-            
-            st.info(f"""
-            👤 **Técnico Activo:** {nombre_tecnico}  
-            📍 **Dirección:** {st.session_state.mi_direccion}  
-            📊 **Estatus:** `{st.session_state.mi_estatus}`  
-            🛠️ **Actividad:** {st.session_state.mi_actividad}  
-            🌐 **Coordenadas Exactas:** `{st.session_state.mi_lat}, {st.session_state.mi_lon}`
-            """)
-
-            # Pestañas para elegir entre Google Maps Embed Directo o Mapa Nativo Streamlit
-            tab_gmaps, tab_native = st.tabs(["🗺️ Google Maps Interactivo", "🔴 Vista de Punto Rojo"])
-
-            with tab_gmaps:
-                # Renderizado directo tipo Google Maps con marcador exacto
-                gmaps_iframe = f"""
-                    <iframe 
-                        width="100%" 
-                        height="420" 
-                        style="border:0; border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);" 
-                        loading="lazy" 
-                        allowfullscreen
-                        src="https://maps.google.com/maps?q={st.session_state.mi_lat},{st.session_state.mi_lon}&hl=es&z=17&output=embed">
-                    </iframe>
-                """
-                components.html(gmaps_iframe, height=430)
-
-            with tab_native:
-                df_mapa = pd.DataFrame([{
-                    "lat": float(st.session_state.mi_lat),
-                    "lon": float(st.session_state.mi_lon)
-                }])
-                st.map(df_mapa, zoom=16)
-
-    elif opcion == "💬 Mensajería Interna":
+    elif opcion == "💬 Mensajería":
         mostrar_modulo_chat()
 
 def vista_cliente():
@@ -660,7 +650,7 @@ def vista_cliente():
     
     with st.sidebar:
         if os.path.exists("tortuga.png"):
-            st.image("tortuga.png", use_container_width=True)
+            st.image("tortuga.png", width=80)
             
         st.markdown(f"""
             <div class="profile-card">
@@ -670,30 +660,31 @@ def vista_cliente():
             <div class="menu-title">Panel de Control</div>
         """, unsafe_allow_html=True)
     
-    opcion = st.sidebar.radio(
-        "", 
-        ["🏠 Inicio / Catálogo de Plagas", "📋 Mis Tratamientos", "💬 Mensajería Interna"],
-        label_visibility="collapsed"
-    )
+        opcion = st.radio(
+            "", 
+            ["🏠 Inicio / Catálogo", "📋 Mis Tratamientos", "💬 Mensajería"],
+            label_visibility="collapsed"
+        )
     
-    if opcion == "🏠 Inicio / Catálogo de Plagas":
+    if opcion == "🏠 Inicio / Catálogo":
         mostrar_catalogo_plagas_principal()
 
     elif opcion == "📋 Mis Tratamientos":
-        st.subheader("📄 Reportes de Fumigación")
+        st.subheader("📄 Mis Reportes de Fumigación")
         mis_reportes = obtener_reportes_cliente(st.session_state.user['nombre'])
+        
+        if not mis_reportes:
+            st.info("No hay reportes registrados para tu cuenta.")
+            
         for r in mis_reportes:
             st.markdown("---")
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                st.markdown(f"### Servicio en: **{r[1]}**")
-                st.write(f"**Fecha:** {r[6][:10]} | **Plaga:** {r[3]}")
-                st.write(f"**Tratamiento:** {r[4]}")
-            with col2:
-                if r[7] and os.path.exists(r[7]):
-                    st.image(r[7], width=200)
+            st.markdown(f"### Servicio en: **{r[1]}**")
+            st.caption(f"Fecha: {r[6][:10]} | Plaga: {r[3]}")
+            st.write(f"**Tratamiento:** {r[4]}")
+            if r[7] and os.path.exists(r[7]):
+                st.image(r[7], use_container_width=True)
 
-    elif opcion == "💬 Mensajería Interna":
+    elif opcion == "💬 Mensajería":
         mostrar_modulo_chat()
 
 # =============================================================================
@@ -702,13 +693,15 @@ def vista_cliente():
 if st.session_state.user is None:
     mostrar_autenticacion()
 else:
-    col_head, col_out = st.columns([5, 1])
-    with col_head:
-        st.title("🐢 Gestión de Fumigaciones")
-    with col_out:
-        if st.button("Cerrar Sesión"):
-            st.session_state.user = None
-            st.rerun()
+    aplicar_estilos_sidebar()
+    
+    # Header adaptado para que no rompa el texto ni comprima los botones en móvil
+    st.title("🐢 Fumigaciones")
+    if st.button("🚪 Cerrar Sesión", key="btn_logout"):
+        st.session_state.user = None
+        st.rerun()
+
+    st.markdown("---")
 
     if st.session_state.user['rol'] == "Técnico":
         vista_tecnico()
