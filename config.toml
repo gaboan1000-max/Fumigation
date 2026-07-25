@@ -1,15 +1,15 @@
 [theme]
-# Color principal (Botones, pestañas activas, acentos) - Verde Esmeralda Profesional
-primaryColor = "#10b981"
+# Verde esmeralda sobrio/oscuro (Color de acento para el botón y pestañas)
+primaryColor = "#059669"
 
-# Fondo principal de la aplicación - Gris oscuro muy profundo (casi negro)
-backgroundColor = "#111827"
+# Azul pizarra muy oscuro (Casi negro, muy elegante para el fondo)
+backgroundColor = "#0f172a"
 
-# Fondo secundario (Barra lateral, cajas de fondo, inputs) - Gris oscuro sutil
-secondaryBackgroundColor = "#1f2937"
+# Azul pizarra ligeramente más claro (Para el fondo de las cajas y formularios)
+secondaryBackgroundColor = "#1e293b"
 
-# Color del texto - Gris muy claro
-textColor = "#f3f4f6"
+# Blanco/Grisáceo muy nítido para que el texto resalte con elegancia
+textColor = "#f8fafc"
 
-# Tipografía moderna
+# Tipografía limpia
 font = "sans serif"
