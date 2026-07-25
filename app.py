@@ -224,10 +224,10 @@ def aplicar_estilos_sidebar():
                 transform: translateX(5px);
             }
             .profile-card {
-                background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+                background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
                 padding: 16px;
                 border-radius: 12px;
-                border: 1px solid #4a5568;
+                border: 1px solid #374151;
                 text-align: center;
                 margin-top: 10px;
                 margin-bottom: 20px;
@@ -241,7 +241,7 @@ def aplicar_estilos_sidebar():
             }
             .profile-role {
                 display: inline-block;
-                background-color: #319795;
+                background-color: #10b981;
                 color: #ffffff;
                 font-size: 0.75rem;
                 font-weight: 600;
@@ -252,7 +252,7 @@ def aplicar_estilos_sidebar():
                 letter-spacing: 0.8px;
             }
             .menu-title {
-                color: #a0aec0;
+                color: #9ca3af;
                 font-size: 0.75rem;
                 font-weight: 700;
                 text-transform: uppercase;
@@ -441,7 +441,7 @@ def mostrar_autenticacion():
             }
             .brand-subtitle {
                 font-size: 1.1rem;
-                color: #a0aec0;
+                color: #9ca3af;
                 margin-bottom: 30px;
             }
             /* Separador vertical invisible para alinear */
@@ -463,19 +463,20 @@ def mostrar_autenticacion():
         st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
         
         if os.path.exists("tortuga.png"):
-            # Mostrar logo un poco más discreto/profesional
             st.image("tortuga.png", width=120)
         
         st.markdown('<div class="brand-title">Gestión Profesional<br>de Fumigaciones</div>', unsafe_allow_html=True)
         st.markdown('<div class="brand-subtitle">Plataforma integral para el control de plagas, gestión de clientes y seguimiento en tiempo real.</div>', unsafe_allow_html=True)
         
-        # Puntos de confianza (Trust badges)
-        st.info("""
-        **Características del Sistema:**
-        * 🛡️ **Seguridad:** Datos encriptados y respaldados.
-        * 📍 **Geolocalización:** Control de servicios en tiempo real.
-        * 📊 **Trazabilidad:** Historial y reportes fotográficos.
-        """)
+        # Puntos de confianza (Trust badges) con diseño elegante y responsivo
+        st.markdown("""
+        <div style="background-color: #1f2937; padding: 20px; border-radius: 10px; border-left: 5px solid #10b981; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h4 style="color: #10b981; margin-top: 0; font-family: sans-serif;">Características del Sistema:</h4>
+            <p style="margin-bottom: 8px; color: #f3f4f6; font-family: sans-serif;">🛡️ <b>Seguridad:</b> Datos encriptados y respaldados.</p>
+            <p style="margin-bottom: 8px; color: #f3f4f6; font-family: sans-serif;">📍 <b>Geolocalización:</b> Control de servicios en tiempo real.</p>
+            <p style="margin-bottom: 0; color: #f3f4f6; font-family: sans-serif;">📊 <b>Trazabilidad:</b> Historial y reportes fotográficos.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
     # --- COLUMNA DERECHA: FORMULARIOS DE ACCESO ---
     with col_auth:
@@ -668,7 +669,7 @@ def vista_tecnico():
             st.markdown("**1. Detectar ubicación en tiempo real:**")
             html_gps_auto = """
                 <button onclick="obtenerGPS()" style="
-                    background-color: #319795;
+                    background-color: #10b981;
                     color: white;
                     border: none;
                     padding: 12px 20px;
@@ -678,7 +679,7 @@ def vista_tecnico():
                     width: 100%;
                     font-size: 1rem;
                 ">📡 Capturar mi Posición Exacta (GPS)</button>
-                <p id="status_gps" style="color: #a0aec0; font-size: 0.85rem; margin-top: 8px; font-weight: 500;"></p>
+                <p id="status_gps" style="color: #9ca3af; font-size: 0.85rem; margin-top: 8px; font-weight: 500;"></p>
                 <script>
                 function obtenerGPS() {
                     const status = document.getElementById('status_gps');
