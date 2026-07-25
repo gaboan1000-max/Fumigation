@@ -421,58 +421,130 @@ def mostrar_catalogo_plagas_principal():
             """)
 
 # =============================================================================
-# 5. AUTENTICACIÓN
+# 5. AUTENTICACIÓN MEJORADA (SPLIT-SCREEN)
 # =============================================================================
 if "user" not in st.session_state:
     st.session_state.user = None
 
 def mostrar_autenticacion():
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if os.path.exists("tortuga.png"):
-            st.image("tortuga.png", width=140)
-            
-        st.markdown("<h2 style='text-align: center;'>Gestión de Fumigaciones</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: gray;'>Plataforma Integral de Control de Plagas</p>", unsafe_allow_html=True)
-        
-        tab_login, tab_registro = st.tabs(["🔑 Iniciar Sesión", "📝 Crear Cuenta"])
-        
-        with tab_login:
-            with st.form("form_login"):
-                correo = st.text_input("Correo electrónico")
-                password = st.text_input("Contraseña", type="password")
-                submit = st.form_submit_button("Entrar", type="primary", use_container_width=True)
-                
-                if submit:
-                    user_data = login_usuario(correo, password)
-                    if user_data:
-                        st.session_state.user = {
-                            "id": user_data[0],
-                            "nombre": user_data[1],
-                            "correo": user_data[2],
-                            "rol": user_data[4],
-                            "telefono": user_data[5]
-                        }
-                        st.rerun()
-                    else:
-                        st.error("Correo o contraseña incorrectos.")
+    # 1. Inyectar CSS específico para la pantalla de inicio
+    st.markdown("""
+        <style>
+            /* Estilos para los textos de la marca */
+            .brand-title {
+                font-size: 2.8rem;
+                font-weight: 800;
+                color: #ffffff;
+                line-height: 1.2;
+                margin-top: 20px;
+                margin-bottom: 10px;
+            }
+            .brand-subtitle {
+                font-size: 1.1rem;
+                color: #a0aec0;
+                margin-bottom: 30px;
+            }
+            /* Separador vertical invisible para alinear */
+            .spacer {
+                margin-top: 60px;
+            }
+            @media (max-width: 768px) {
+                .spacer { margin-top: 10px; }
+                .brand-title { font-size: 2rem; }
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
-        with tab_registro:
-            with st.form("form_registro"):
-                nuevo_nombre = st.text_input("Nombre Completo / Empresa")
-                nuevo_correo = st.text_input("Correo Electrónico")
-                nuevo_telefono = st.text_input("Teléfono")
-                nuevo_rol = st.selectbox("Tipo de Usuario", ["Cliente", "Técnico"])
-                pass1 = st.text_input("Contraseña", type="password")
-                pass2 = st.text_input("Confirmar Contraseña", type="password")
+    # 2. Layout de dos columnas principales con un pequeño espacio en medio
+    col_brand, col_space, col_auth = st.columns([1.2, 0.2, 1])
+
+    # --- COLUMNA IZQUIERDA: BRANDING Y PROPUESTA DE VALOR ---
+    with col_brand:
+        st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
+        
+        if os.path.exists("tortuga.png"):
+            # Mostrar logo un poco más discreto/profesional
+            st.image("tortuga.png", width=120)
+        
+        st.markdown('<div class="brand-title">Gestión Profesional<br>de Fumigaciones</div>', unsafe_allow_html=True)
+        st.markdown('<div class="brand-subtitle">Plataforma integral para el control de plagas, gestión de clientes y seguimiento en tiempo real.</div>', unsafe_allow_html=True)
+        
+        # Puntos de confianza (Trust badges)
+        st.info("""
+        **Características del Sistema:**
+        * 🛡️ **Seguridad:** Datos encriptados y respaldados.
+        * 📍 **Geolocalización:** Control de servicios en tiempo real.
+        * 📊 **Trazabilidad:** Historial y reportes fotográficos.
+        """)
+
+    # --- COLUMNA DERECHA: FORMULARIOS DE ACCESO ---
+    with col_auth:
+        st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
+        
+        # Contenedor visual para agrupar el formulario
+        with st.container():
+            tab_login, tab_registro = st.tabs(["🔐 Iniciar Sesión", "📝 Crear Cuenta Nueva"])
+            
+            # --- PESTAÑA: LOGIN ---
+            with tab_login:
+                st.markdown("### ¡Bienvenido de nuevo!")
+                st.caption("Ingresa tus credenciales para acceder al panel de control.")
                 
-                reg_submit = st.form_submit_button("Registrarse", use_container_width=True)
-                if reg_submit:
-                    if pass1 == pass2 and nuevo_nombre and nuevo_correo:
-                        if agregar_usuario(nuevo_nombre, nuevo_correo, pass1, nuevo_rol, nuevo_telefono):
-                            st.success("Cuenta creada exitosamente.")
+                with st.form("form_login", clear_on_submit=False):
+                    correo = st.text_input("Correo electrónico", placeholder="ejemplo@empresa.com")
+                    password = st.text_input("Contraseña", type="password", placeholder="••••••••")
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    submit = st.form_submit_button("Ingresar al Sistema", type="primary", use_container_width=True)
+                    
+                    if submit:
+                        if correo and password:
+                            user_data = login_usuario(correo, password)
+                            if user_data:
+                                st.session_state.user = {
+                                    "id": user_data[0],
+                                    "nombre": user_data[1],
+                                    "correo": user_data[2],
+                                    "rol": user_data[4],
+                                    "telefono": user_data[5]
+                                }
+                                st.rerun()
+                            else:
+                                st.error("⚠️ Correo o contraseña incorrectos. Intenta nuevamente.")
                         else:
-                            st.error("El correo ya existe.")
+                            st.warning("Por favor, completa ambos campos.")
+
+            # --- PESTAÑA: REGISTRO ---
+            with tab_registro:
+                st.markdown("### Solicitud de Acceso")
+                st.caption("Registra tus datos para habilitar tu cuenta en la plataforma.")
+                
+                with st.form("form_registro", clear_on_submit=True):
+                    nuevo_nombre = st.text_input("Nombre Completo / Razón Social", placeholder="Ej. Juan Pérez / Empresa S.A.")
+                    nuevo_correo = st.text_input("Correo Electrónico", placeholder="contacto@empresa.com")
+                    
+                    col_t, col_r = st.columns(2)
+                    with col_t:
+                        nuevo_telefono = st.text_input("Teléfono Móvil", placeholder="10 dígitos")
+                    with col_r:
+                        nuevo_rol = st.selectbox("Tipo de Usuario", ["Cliente", "Técnico"])
+                    
+                    pass1 = st.text_input("Contraseña", type="password", placeholder="Crea una contraseña segura")
+                    pass2 = st.text_input("Confirmar Contraseña", type="password", placeholder="Repite tu contraseña")
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    reg_submit = st.form_submit_button("Registrar Cuenta", use_container_width=True)
+                    
+                    if reg_submit:
+                        if not nuevo_nombre or not nuevo_correo or not pass1:
+                            st.warning("⚠️ Por favor, llena todos los campos obligatorios.")
+                        elif pass1 != pass2:
+                            st.error("⚠️ Las contraseñas no coinciden.")
+                        else:
+                            if agregar_usuario(nuevo_nombre, nuevo_correo, pass1, nuevo_rol, nuevo_telefono):
+                                st.success("✅ Cuenta creada exitosamente. Ahora puedes iniciar sesión.")
+                            else:
+                                st.error("❌ El correo ingresado ya se encuentra registrado.")
 
 # =============================================================================
 # 6. VISTAS PRINCIPALES
