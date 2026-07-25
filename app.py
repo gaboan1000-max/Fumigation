@@ -319,9 +319,16 @@ def mostrar_catalogo_plagas_principal():
     
     plaga_seleccionada = st.selectbox(
         "🔍 Selecciona una especie para ver su ficha técnica:",
-        ["Cucaracha americana (Periplaneta americana)", "Próximamente más plagas..."]
+        [
+            "Cucaracha americana (Periplaneta americana)", 
+            "Cucaracha alemana (Blattella germanica)",
+            "Próximamente más plagas..."
+        ]
     )
     
+    # ---------------------------------------------------------
+    # FICHA: CUCARACHA AMERICANA
+    # ---------------------------------------------------------
     if plaga_seleccionada == "Cucaracha americana (Periplaneta americana)":
         st.markdown("---")
         col_img, col_info = st.columns([1, 1])
@@ -331,7 +338,7 @@ def mostrar_catalogo_plagas_principal():
                 st.image("cucaracha_americana.jpg", caption="Infografía Técnica: Cucaracha Americana", use_container_width=True)
             else:
                 st.info("💡 Guarda la imagen 'cucaracha_americana.jpg' en la carpeta raíz.")
-                uploaded_img = st.file_uploader("O sube la infografía aquí:", type=["jpg", "png", "jpeg"], key="infografia_cucaracha")
+                uploaded_img = st.file_uploader("O sube la infografía aquí:", type=["jpg", "png", "jpeg"], key="info_americana")
                 if uploaded_img:
                     with open("cucaracha_americana.jpg", "wb") as f:
                         f.write(uploaded_img.getbuffer())
@@ -357,7 +364,7 @@ def mostrar_catalogo_plagas_principal():
         
         tab_bio, tab_hab, tab_dieta, tab_ciclo, tab_salud, tab_curio, tab_prev = st.tabs([
             "📌 Características", "🏠 Hábitat", "🍞 Alimentación",
-            "🔄 Ciclo de Vida", "⚠️ Importancia Sanitaria", "💡 Curiosidades", "🛡️ Prevención y Control"
+            "🔄 Ciclo de Vida", "⚠️ Importancia Sanitaria", "💡 Curiosidades", "🛡️ Prevención"
         ])
 
         with tab_bio:
@@ -377,18 +384,11 @@ def mostrar_catalogo_plagas_principal():
                 st.markdown("* Cálidos.\n* Húmedos.\n* Oscuros.")
             with col_h2:
                 st.markdown("**Es común encontrarlas en:**")
-                st.markdown("""
-                * Alcantarillas y drenajes.
-                * Sótanos y bodegas.
-                * Cuartos de máquinas.
-                * Cocinas y baños.
-                """)
+                st.markdown("* Alcantarillas y drenajes.\n* Sótanos y bodegas.\n* Cuartos de máquinas.\n* Cocinas y baños.")
 
         with tab_dieta:
             st.subheader("Alimentación")
-            st.markdown("""
-            Es **omnívora y carroñera**. Su dieta incluye restos de comida, papel, cartón, pegamento, cuero y materia orgánica en descomposición.
-            """)
+            st.markdown("Es **omnívora y carroñera**. Su dieta incluye restos de comida, papel, cartón, pegamento, cuero y materia orgánica en descomposición.")
 
         with tab_ciclo:
             st.subheader("Ciclo de Vida y Reproducción")
@@ -407,18 +407,141 @@ def mostrar_catalogo_plagas_principal():
             st.subheader("Curiosidades")
             st.markdown("""
             * Soporta semanas sin comer si dispone de agua.
-            * Puede sobrevivir hasta una semana sin cabeza (respira por espiráculos laterales).
+            * Puede sobrevivir hasta una semana sin cabeza.
             * Hábitos mayoritariamente nocturnos.
             """)
 
         with tab_prev:
             st.subheader("Prevención y Control")
+            st.markdown("1. Almacenamiento hermético de alimentos.\n2. Eliminación continua de residuos.\n3. Corrección de fugas.\n4. Sellado de grietas.")
+
+    # ---------------------------------------------------------
+    # FICHA: CUCARACHA ALEMANA
+    # ---------------------------------------------------------
+    elif plaga_seleccionada == "Cucaracha alemana (Blattella germanica)":
+        st.markdown("---")
+        col_img, col_info = st.columns([1, 1])
+        
+        with col_img:
+            if os.path.exists("cucaracha_alemana.jpg"):
+                st.image("cucaracha_alemana.jpg", caption="Infografía Técnica: Cucaracha Alemana", use_container_width=True)
+            else:
+                st.info("💡 Guarda la imagen 'cucaracha_alemana.jpg' en la carpeta raíz.")
+                uploaded_img = st.file_uploader("O sube la infografía aquí:", type=["jpg", "png", "jpeg"], key="info_alemana")
+                if uploaded_img:
+                    with open("cucaracha_alemana.jpg", "wb") as f:
+                        f.write(uploaded_img.getbuffer())
+                    st.rerun()
+
+        with col_info:
+            st.header("🪳 Cucaracha alemana (*Blattella germanica*)")
             st.markdown("""
-            1. Almacenamiento hermético de alimentos.
-            2. Eliminación continua de residuos orgánicos.
-            3. Corrección de fugas de humedad.
-            4. Sellado de grietas y hendiduras estructurales.
+            La cucaracha alemana (*Blattella germanica*) es una de las especies de cucarachas más pequeñas y, al mismo tiempo, una de las plagas domésticas más importantes del mundo. A pesar de su nombre, no es originaria de Alemania; se cree que proviene del sudeste asiático y se ha distribuido globalmente gracias al comercio y al transporte de mercancías.
             """)
+            st.info("""
+            **Clasificación**  
+            • **Nombre científico:** Blattella germanica  
+            • **Orden:** Blattodea  
+            • **Familia:** Ectobiidae
+            """)
+
+            m1, m2 = st.columns(2)
+            m1.metric("Tamaño Adulto", "1.1 - 1.6 cm")
+            m2.metric("Velocidad Máx.", "4 - 5 km/h")
+
+        st.markdown("---")
+        
+        tab_bio, tab_hab, tab_dieta, tab_ciclo, tab_salud, tab_curio, tab_prev, tab_diff = st.tabs([
+            "📌 Características", "🏠 Hábitat", "🍞 Alimentación",
+            "🔄 Ciclo de Vida", "⚠️ Sanidad", "💡 Curiosidades", "🛡️ Control", "🆚 Alemana vs Americana"
+        ])
+
+        with tab_bio:
+            st.subheader("Características Físicas")
+            st.markdown("""
+            * **Tamaño:** Entre 1.1 y 1.6 cm de longitud.
+            * **Color:** Marrón claro o amarillo café.
+            * **Marcas distintivas:** Presenta **dos líneas negras paralelas** sobre el pronoto (detrás de la cabeza), una de sus principales características de identificación.
+            * **Alas:** Machos y hembras poseen alas, pero rara vez vuelan; normalmente se desplazan corriendo.
+            * **Velocidad:** Puede correr aproximadamente 4 a 5 km/h.
+            """)
+
+        with tab_hab:
+            st.subheader("Hábitat y Refugios")
+            col_h1, col_h2 = st.columns(2)
+            with col_h1:
+                st.markdown("**Prefiere lugares:**")
+                st.markdown("* Cálidos.\n* Húmedos.\n* Cercanos a fuentes de alimento.")
+            with col_h2:
+                st.markdown("**Es común encontrarlas en:**")
+                st.markdown("""
+                * Cocinas, restaurantes y despensas.
+                * Baños.
+                * Electrodomésticos (refrigeradores, microondas, cafeteras).
+                * Muebles de cocina, hospitales y hoteles.
+                """)
+
+        with tab_dieta:
+            st.subheader("Alimentación (Omnívora)")
+            st.markdown("Es omnívora, con preferencia por alimentos ricos en carbohidratos y grasas.")
+            st.markdown("""
+            * **Dieta habitual:** Restos de comida, azúcar, pan, cereales, carnes, quesos, grasas, alimento para mascotas, papel, pegamento, jabón y cartón.
+            * **Comportamiento extremo:** Cuando el alimento escasea puede practicar canibalismo o alimentarse de excrementos y restos de otras cucarachas.
+            """)
+
+        with tab_ciclo:
+            st.subheader("Ciclo de Vida y Reproducción")
+            st.markdown("""
+            La cucaracha alemana pasa por tres etapas:
+            1. **Huevo:** La hembra lleva la ooteca adherida al abdomen hasta poco antes de la eclosión. Cada ooteca contiene entre 30 y 40 huevos, una cantidad muy superior a muchas otras especies.
+            2. **Ninfa:** Son de color oscuro y carecen de alas. Mudan su exoesqueleto entre 6 y 7 veces antes de alcanzar la etapa adulta.
+            3. **Adulto:** Vive aproximadamente 100 a 200 días, dependiendo de la temperatura y disponibilidad de alimento.
+            """)
+            st.info("⚠️ **Capacidad Reproductiva:** Es considerada una de las cucarachas con mayor capacidad reproductiva. Una sola hembra puede producir entre 4 y 8 ootecas durante su vida (120 a 320 descendientes), lo que explica la rapidez con la que una infestación puede crecer.")
+
+        with tab_salud:
+            st.subheader("Importancia Sanitaria")
+            st.error("""
+            **Riesgo de Salud Pública:** Representa un importante riesgo debido a que puede transportar microorganismos en su cuerpo y patas.
+            * Contribuye a la dispersión de *Salmonella*, *Escherichia coli (E. coli)* y *Staphylococcus aureus*.
+            * Hongos, virus y parásitos de forma mecánica.
+            """)
+            st.warning("**Riesgo Alergénico:** Sus excrementos, saliva y fragmentos de su exoesqueleto pueden provocar alergias, dermatitis y crisis asmáticas, especialmente en niños.")
+
+        with tab_curio:
+            st.subheader("Curiosidades")
+            st.markdown("""
+            * Es la especie de cucaracha que más frecuentemente invade viviendas y establecimientos de alimentos.
+            * Puede esconderse en grietas de apenas 2 mm de ancho.
+            * Es principalmente nocturna.
+            * Se reproduce más rápido que la mayoría de las demás especies de cucarachas.
+            * Algunas poblaciones han desarrollado resistencia a diversos insecticidas, lo que dificulta su control.
+            """)
+
+        with tab_prev:
+            st.subheader("Prevención y Control Técnico")
+            st.markdown("""
+            Para evitar infestaciones se recomienda:
+            * Mantener una limpieza constante en cocinas y comedores.
+            * Guardar los alimentos en recipientes herméticos.
+            * Reparar fugas de agua y vaciar la basura diariamente.
+            * Sellar grietas y rendijas, limpiando debajo de muebles y electrodomésticos.
+            * Realizar inspecciones periódicas.
+            * **Acción recomendada:** En infestaciones importantes, contratar un servicio profesional de control de plagas.
+            """)
+            
+        with tab_diff:
+            st.subheader("Diferencia principal con la cucaracha americana")
+            st.markdown("""
+            | Característica | 🪳 Cucaracha Alemana (*Blattella germanica*) | 🪳 Cucaracha Americana (*Periplaneta americana*) |
+            | :--- | :--- | :--- |
+            | **Tamaño** | 1.1 – 1.6 cm (Mucho más pequeña) | 3.5 – 5 cm (Más grande) |
+            | **Hábitat principal** | Vive principalmente dentro de viviendas y negocios, especialmente en cocinas. | Suele habitar alcantarillas, drenajes y exteriores. |
+            | **Reproducción / Control** | Se reproduce mucho más rápido, lo que la convierte en una de las plagas urbanas más difíciles de controlar. | Menor velocidad reproductiva, controlable mediante bloqueos perimetrales. |
+            """)
+
+    elif plaga_seleccionada == "Próximamente más plagas...":
+        st.info("Estamos actualizando la enciclopedia técnica con nuevas especies (chinches, roedores, mosquitos). ¡Vuelve pronto!")
 
 # =============================================================================
 # 5. AUTENTICACIÓN MEJORADA (SPLIT-SCREEN)
