@@ -193,7 +193,7 @@ def obtener_conversacion(user1, user2):
     return msgs
 
 # =============================================================================
-# 3. ESTILOS Y ANIMACIONES CSS
+# 3. ESTILOS, ANIMACIONES CSS Y BOTONES PROFESIONALES
 # =============================================================================
 def aplicar_estilos_sidebar():
     st.markdown("""
@@ -223,6 +223,27 @@ def aplicar_estilos_sidebar():
                 background-color: rgba(255, 255, 255, 0.08);
                 transform: translateX(5px);
             }
+            
+            /* --- BOTONES PRINCIPALES: ESTILO AZUL CORPORATIVO Y ELEGANTE --- */
+            button[kind="primary"] {
+                background-color: #1d4ed8 !important;
+                border: 1px solid #2563eb !important;
+                color: #ffffff !important;
+                transition: background-color 0.3s ease, transform 0.2s ease !important;
+            }
+            button[kind="primary"]:hover {
+                background-color: #2563eb !important;
+                border-color: #3b82f6 !important;
+            }
+
+            /* --- ESTILOS DE PESTAÑAS (TABS) --- */
+            .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+                color: #3b82f6 !important;
+            }
+            .stTabs [data-baseweb="tab-highlight"] {
+                background-color: #3b82f6 !important;
+            }
+
             .profile-card {
                 background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
                 padding: 16px;
@@ -490,7 +511,7 @@ def mostrar_catalogo_plagas_principal():
         st.info("Estamos actualizando la enciclopedia técnica con nuevas especies. ¡Vuelve pronto!")
 
 # =============================================================================
-# 5. AUTENTICACIÓN MEJORADA (SPLIT-SCREEN CON LOGO AMPLIADO)
+# 5. AUTENTICACIÓN MEJORADA (SPLIT-SCREEN CON LOGO AMPLIADO A 220px)
 # =============================================================================
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -527,7 +548,7 @@ def mostrar_autenticacion():
         st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
         
         if os.path.exists("tortuga.png"):
-            # Logo ampliado a 220px como se solicitó
+            # Logo ampliado a 220px
             st.image("tortuga.png", width=220)
         
         st.markdown('<div class="brand-title">Gestión Profesional<br>de Fumigaciones</div>', unsafe_allow_html=True)
@@ -594,7 +615,7 @@ def mostrar_autenticacion():
                     pass2 = st.text_input("Confirmar Contraseña", type="password", placeholder="Repite tu contraseña")
                     
                     st.markdown("<br>", unsafe_allow_html=True)
-                    reg_submit = st.form_submit_button("Registrar Cuenta", use_container_width=True)
+                    reg_submit = st.form_submit_button("Registrar Cuenta", type="primary", use_container_width=True)
                     
                     if reg_submit:
                         if not nuevo_nombre or not nuevo_correo or not pass1:
@@ -615,7 +636,6 @@ def vista_tecnico():
     
     with st.sidebar:
         if os.path.exists("tortuga.png"):
-            # Logo adaptado y más visible en el sidebar
             st.image("tortuga.png", width=160)
             
         st.markdown(f"""
@@ -684,7 +704,7 @@ def vista_tecnico():
                 tel_local = st.text_input("Teléfono de Contacto")
                 dir_local = st.text_input("Dirección Completa")
                 
-                btn_cli = st.form_submit_button("Guardar Cliente")
+                btn_cli = st.form_submit_button("Guardar Cliente", type="primary")
                 if btn_cli:
                     if nombre_local:
                         if agregar_cliente_db(nombre_local, responsable, tel_local, dir_local):
@@ -716,7 +736,6 @@ def vista_tecnico():
         st.subheader("📍 Geolocalización y Control de Servicios")
         st.info("Módulo interactivo de rastreo de unidades y servicios activos.")
         
-        # Mapa interactivo simulado con coordenadas de referencia
         df_map = pd.DataFrame({
             'lat': [19.4326, 19.4400, 19.4200],
             'lon': [-99.1332, -99.1400, -99.1200],
@@ -792,5 +811,4 @@ else:
     elif rol_actual == "Cliente":
         vista_cliente()
     else:
-        # Por seguridad si hubiera algún rol personalizado
         vista_tecnico()
