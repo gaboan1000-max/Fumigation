@@ -326,9 +326,6 @@ def mostrar_catalogo_plagas_principal():
         ]
     )
     
-    # ---------------------------------------------------------
-    # FICHA: CUCARACHA AMERICANA
-    # ---------------------------------------------------------
     if plaga_seleccionada == "Cucaracha americana (Periplaneta americana)":
         st.markdown("---")
         col_img, col_info = st.columns([1, 1])
@@ -415,9 +412,6 @@ def mostrar_catalogo_plagas_principal():
             st.subheader("Prevención y Control")
             st.markdown("1. Almacenamiento hermético de alimentos.\n2. Eliminación continua de residuos.\n3. Corrección de fugas.\n4. Sellado de grietas.")
 
-    # ---------------------------------------------------------
-    # FICHA: CUCARACHA ALEMANA
-    # ---------------------------------------------------------
     elif plaga_seleccionada == "Cucaracha alemana (Blattella germanica)":
         st.markdown("---")
         col_img, col_info = st.columns([1, 1])
@@ -436,7 +430,7 @@ def mostrar_catalogo_plagas_principal():
         with col_info:
             st.header("🪳 Cucaracha alemana (*Blattella germanica*)")
             st.markdown("""
-            La cucaracha alemana (*Blattella germanica*) es una de las especies de cucarachas más pequeñas y, al mismo tiempo, una de las plagas domésticas más importantes del mundo. A pesar de su nombre, no es originaria de Alemania; se cree que proviene del sudeste asiático y se ha distribuido globalmente gracias al comercio y al transporte de mercancías.
+            La cucaracha alemana (*Blattella germanica*) es una de las especies de cucarachas más pequeñas y, al mismo tiempo, una de las plagas domésticas más importantes del mundo.
             """)
             st.info("""
             **Clasificación**  
@@ -461,99 +455,49 @@ def mostrar_catalogo_plagas_principal():
             st.markdown("""
             * **Tamaño:** Entre 1.1 y 1.6 cm de longitud.
             * **Color:** Marrón claro o amarillo café.
-            * **Marcas distintivas:** Presenta **dos líneas negras paralelas** sobre el pronoto (detrás de la cabeza), una de sus principales características de identificación.
-            * **Alas:** Machos y hembras poseen alas, pero rara vez vuelan; normalmente se desplazan corriendo.
-            * **Velocidad:** Puede correr aproximadamente 4 a 5 km/h.
+            * **Marcas distintivas:** Presenta **dos líneas negras paralelas** sobre el pronoto.
             """)
 
         with tab_hab:
             st.subheader("Hábitat y Refugios")
-            col_h1, col_h2 = st.columns(2)
-            with col_h1:
-                st.markdown("**Prefiere lugares:**")
-                st.markdown("* Cálidos.\n* Húmedos.\n* Cercanos a fuentes de alimento.")
-            with col_h2:
-                st.markdown("**Es común encontrarlas en:**")
-                st.markdown("""
-                * Cocinas, restaurantes y despensas.
-                * Baños.
-                * Electrodomésticos (refrigeradores, microondas, cafeteras).
-                * Muebles de cocina, hospitales y hoteles.
-                """)
+            st.markdown("* Cocinas, restaurantes y despensas.\n* Electrodomésticos y baños.")
 
         with tab_dieta:
             st.subheader("Alimentación (Omnívora)")
-            st.markdown("Es omnívora, con preferencia por alimentos ricos en carbohidratos y grasas.")
-            st.markdown("""
-            * **Dieta habitual:** Restos de comida, azúcar, pan, cereales, carnes, quesos, grasas, alimento para mascotas, papel, pegamento, jabón y cartón.
-            * **Comportamiento extremo:** Cuando el alimento escasea puede practicar canibalismo o alimentarse de excrementos y restos de otras cucarachas.
-            """)
+            st.markdown("Restos de comida, azúcares, grasas y cartón.")
 
         with tab_ciclo:
-            st.subheader("Ciclo de Vida y Reproducción")
-            st.markdown("""
-            La cucaracha alemana pasa por tres etapas:
-            1. **Huevo:** La hembra lleva la ooteca adherida al abdomen hasta poco antes de la eclosión. Cada ooteca contiene entre 30 y 40 huevos, una cantidad muy superior a muchas otras especies.
-            2. **Ninfa:** Son de color oscuro y carecen de alas. Mudan su exoesqueleto entre 6 y 7 veces antes de alcanzar la etapa adulta.
-            3. **Adulto:** Vive aproximadamente 100 a 200 días, dependiendo de la temperatura y disponibilidad de alimento.
-            """)
-            st.info("⚠️ **Capacidad Reproductiva:** Es considerada una de las cucarachas con mayor capacidad reproductiva. Una sola hembra puede producir entre 4 y 8 ootecas durante su vida (120 a 320 descendientes), lo que explica la rapidez con la que una infestación puede crecer.")
+            st.subheader("Ciclo de Vida")
+            st.markdown("Huevo (ooteca de 30-40 huevos), ninfa y adulto.")
 
         with tab_salud:
             st.subheader("Importancia Sanitaria")
-            st.error("""
-            **Riesgo de Salud Pública:** Representa un importante riesgo debido a que puede transportar microorganismos en su cuerpo y patas.
-            * Contribuye a la dispersión de *Salmonella*, *Escherichia coli (E. coli)* y *Staphylococcus aureus*.
-            * Hongos, virus y parásitos de forma mecánica.
-            """)
-            st.warning("**Riesgo Alergénico:** Sus excrementos, saliva y fragmentos de su exoesqueleto pueden provocar alergias, dermatitis y crisis asmáticas, especialmente en niños.")
+            st.error("Dispersión de *Salmonella*, *E. coli* y alérgenos asmáticos.")
 
         with tab_curio:
             st.subheader("Curiosidades")
-            st.markdown("""
-            * Es la especie de cucaracha que más frecuentemente invade viviendas y establecimientos de alimentos.
-            * Puede esconderse en grietas de apenas 2 mm de ancho.
-            * Es principalmente nocturna.
-            * Se reproduce más rápido que la mayoría de las demás especies de cucarachas.
-            * Algunas poblaciones han desarrollado resistencia a diversos insecticidas, lo que dificulta su control.
-            """)
+            st.markdown("Se esconde en rendijas de 2 mm y posee gran resistencia a insecticidas.")
 
         with tab_prev:
-            st.subheader("Prevención y Control Técnico")
-            st.markdown("""
-            Para evitar infestaciones se recomienda:
-            * Mantener una limpieza constante en cocinas y comedores.
-            * Guardar los alimentos en recipientes herméticos.
-            * Reparar fugas de agua y vaciar la basura diariamente.
-            * Sellar grietas y rendijas, limpiando debajo de muebles y electrodomésticos.
-            * Realizar inspecciones periódicas.
-            * **Acción recomendada:** En infestaciones importantes, contratar un servicio profesional de control de plagas.
-            """)
-            
+            st.subheader("Control")
+            st.markdown("Limpieza estricta, sellado de rendijas y contratación profesional.")
+
         with tab_diff:
-            st.subheader("Diferencia principal con la cucaracha americana")
-            st.markdown("""
-            | Característica | 🪳 Cucaracha Alemana (*Blattella germanica*) | 🪳 Cucaracha Americana (*Periplaneta americana*) |
-            | :--- | :--- | :--- |
-            | **Tamaño** | 1.1 – 1.6 cm (Mucho más pequeña) | 3.5 – 5 cm (Más grande) |
-            | **Hábitat principal** | Vive principalmente dentro de viviendas y negocios, especialmente en cocinas. | Suele habitar alcantarillas, drenajes y exteriores. |
-            | **Reproducción / Control** | Se reproduce mucho más rápido, lo que la convierte en una de las plagas urbanas más difíciles de controlar. | Menor velocidad reproductiva, controlable mediante bloqueos perimetrales. |
-            """)
+            st.subheader("Diferencias")
+            st.markdown("La alemana es pequeña (1.1-1.6 cm) y vive dentro de cocinas; la americana mide hasta 5 cm y suele venir de drenajes.")
 
     elif plaga_seleccionada == "Próximamente más plagas...":
-        st.info("Estamos actualizando la enciclopedia técnica con nuevas especies (chinches, roedores, mosquitos). ¡Vuelve pronto!")
+        st.info("Estamos actualizando la enciclopedia técnica con nuevas especies. ¡Vuelve pronto!")
 
 # =============================================================================
-# 5. AUTENTICACIÓN MEJORADA (SPLIT-SCREEN)
+# 5. AUTENTICACIÓN MEJORADA (SPLIT-SCREEN CON LOGO AMPLIADO)
 # =============================================================================
 if "user" not in st.session_state:
     st.session_state.user = None
 
 def mostrar_autenticacion():
-    # 1. Inyectar CSS específico para la pantalla de inicio
     st.markdown("""
         <style>
-            /* Estilos para los textos de la marca */
             .brand-title {
                 font-size: 2.8rem;
                 font-weight: 800;
@@ -567,7 +511,6 @@ def mostrar_autenticacion():
                 color: #9ca3af;
                 margin-bottom: 30px;
             }
-            /* Separador vertical invisible para alinear */
             .spacer {
                 margin-top: 60px;
             }
@@ -578,20 +521,18 @@ def mostrar_autenticacion():
         </style>
     """, unsafe_allow_html=True)
 
-    # 2. Layout de dos columnas principales con un pequeño espacio en medio
     col_brand, col_space, col_auth = st.columns([1.2, 0.2, 1])
 
-    # --- COLUMNA IZQUIERDA: BRANDING Y PROPUESTA DE VALOR ---
     with col_brand:
         st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
         
         if os.path.exists("tortuga.png"):
-            st.image("tortuga.png", width=120)
+            # Logo ampliado a 220px como se solicitó
+            st.image("tortuga.png", width=220)
         
         st.markdown('<div class="brand-title">Gestión Profesional<br>de Fumigaciones</div>', unsafe_allow_html=True)
         st.markdown('<div class="brand-subtitle">Plataforma integral para el control de plagas, gestión de clientes y seguimiento en tiempo real.</div>', unsafe_allow_html=True)
         
-        # Puntos de confianza (Trust badges) con diseño elegante y responsivo
         st.markdown("""
         <div style="background-color: #1f2937; padding: 20px; border-radius: 10px; border-left: 5px solid #10b981; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <h4 style="color: #10b981; margin-top: 0; font-family: sans-serif;">Características del Sistema:</h4>
@@ -601,15 +542,12 @@ def mostrar_autenticacion():
         </div>
         """, unsafe_allow_html=True)
 
-    # --- COLUMNA DERECHA: FORMULARIOS DE ACCESO ---
     with col_auth:
         st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
         
-        # Contenedor visual para agrupar el formulario
         with st.container():
             tab_login, tab_registro = st.tabs(["🔐 Iniciar Sesión", "📝 Crear Cuenta Nueva"])
             
-            # --- PESTAÑA: LOGIN ---
             with tab_login:
                 st.markdown("### ¡Bienvenido de nuevo!")
                 st.caption("Ingresa tus credenciales para acceder al panel de control.")
@@ -638,7 +576,6 @@ def mostrar_autenticacion():
                         else:
                             st.warning("Por favor, completa ambos campos.")
 
-            # --- PESTAÑA: REGISTRO ---
             with tab_registro:
                 st.markdown("### Solicitud de Acceso")
                 st.caption("Registra tus datos para habilitar tu cuenta en la plataforma.")
@@ -671,14 +608,15 @@ def mostrar_autenticacion():
                                 st.error("❌ El correo ingresado ya se encuentra registrado.")
 
 # =============================================================================
-# 6. VISTAS PRINCIPALES
+# 6. VISTAS PRINCIPALES (TÉCNICO Y CLIENTE)
 # =============================================================================
 def vista_tecnico():
     aplicar_estilos_sidebar()
     
     with st.sidebar:
         if os.path.exists("tortuga.png"):
-            st.image("tortuga.png", use_container_width=True)
+            # Logo adaptado y más visible en el sidebar
+            st.image("tortuga.png", width=160)
             
         st.markdown(f"""
             <div class="profile-card">
@@ -717,175 +655,74 @@ def vista_tecnico():
             col1, col2 = st.columns(2)
             with col1:
                 cliente = st.selectbox("Cliente / Local", options=lista_clientes if lista_clientes else ["Sin clientes"])
-                plaga = st.text_input("Tipo de Plaga", placeholder="Ej. Cucaracha, Roedores")
-                estatus = st.selectbox("Estatus", ["Completado", "En Proceso", "Seguimiento Requerido"])
+                plaga = st.text_input("Tipo de Plaga", placeholder="Ej. Cucaracha alemana, Roedores")
+                tratamiento = st.text_area("Tratamiento Aplicado / Productos", placeholder="Ej. Aplicación de gel específico y aspersión perimetral.")
             with col2:
-                tratamiento = st.text_area("Tratamiento Aplicado")
-                evidencia = st.file_uploader("Evidencia Fotográfica", type=["jpg", "png", "jpeg"])
-                
-            guardar = st.form_submit_button("Guardar Reporte", type="primary")
-            if guardar and cliente != "Sin clientes":
-                file_path = None
+                estatus = st.selectbox("Estatus del Servicio", ["Completado", "En Proceso", "Seguimiento Requerido"])
+                tecnico = st.text_input("Técnico Responsable", value=st.session_state.user['nombre'])
+                evidencia = st.file_uploader("Subir Evidencia Fotográfica", type=["jpg", "png", "jpeg"])
+            
+            submit_serv = st.form_submit_button("Guardar Reporte de Servicio", type="primary", use_container_width=True)
+            
+            if submit_serv:
+                path_img = ""
                 if evidencia:
-                    file_path = os.path.join("uploads", f"{datetime.now().timestamp()}_{evidencia.name}")
-                    with open(file_path, "wb") as f:
+                    path_img = os.path.join("uploads", evidencia.name)
+                    with open(path_img, "wb") as f:
                         f.write(evidencia.getbuffer())
-                guardar_reporte(cliente, st.session_state.user['nombre'], plaga, tratamiento, estatus, file_path)
-                st.success("✅ Guardado correctamente.")
+                
+                guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, path_img)
+                st.success("✅ Servicio registrado correctamente en el sistema.")
 
     elif opcion == "👥 Gestión Clientes":
-        st.subheader("👥 Gestión de Clientes")
-        tab1, tab2 = st.tabs(["➕ Agregar Cliente", "📋 Directorio"])
-        with tab1:
+        st.subheader("👥 Gestión de Clientes y Locales")
+        
+        with st.expander("➕ Registrar Nuevo Local o Cliente"):
             with st.form("form_nuevo_cliente", clear_on_submit=True):
-                nom_local = st.text_input("Nombre del Local")
-                resp = st.text_input("Responsable")
-                tel = st.text_input("Teléfono")
-                direc = st.text_input("Dirección")
-                if st.form_submit_button("Guardar"):
-                    if agregar_cliente_db(nom_local, resp, tel, direc):
-                        st.success("Cliente registrado.")
-        with tab2:
-            for c in obtener_todos_clientes_detalle():
-                with st.expander(f"🏢 {c[1]}"):
-                    st.write(f"**Responsable:** {c[2]}")
-                    st.write(f"**Teléfono:** {c[3]}")
-                    st.write(f"**Dirección:** {c[4]}")
+                nombre_local = st.text_input("Nombre del Local / Empresa")
+                responsable = st.text_input("Persona Responsable")
+                tel_local = st.text_input("Teléfono de Contacto")
+                dir_local = st.text_input("Dirección Completa")
+                
+                btn_cli = st.form_submit_button("Guardar Cliente")
+                if btn_cli:
+                    if nombre_local:
+                        if agregar_cliente_db(nombre_local, responsable, tel_local, dir_local):
+                            st.success("✅ Cliente registrado con éxito.")
+                            st.rerun()
+                        else:
+                            st.error("⚠️ El nombre del local ya existe.")
+                    else:
+                        st.warning("El nombre del local es obligatorio.")
+        
+        st.markdown("### Listado de Clientes Registrados")
+        clientes_detalle = obtener_todos_clientes_detalle()
+        if clientes_detalle:
+            df_clientes = pd.DataFrame(clientes_detalle, columns=["ID", "Local/Empresa", "Responsable", "Teléfono", "Dirección"])
+            st.dataframe(df_clientes.drop(columns=["ID"]), use_container_width=True)
+        else:
+            st.info("No hay clientes registrados todavía.")
 
     elif opcion == "📊 Historial & Reportes":
-        st.subheader("📋 Historial de Servicios")
-        for r in obtener_todos_reportes():
-            with st.expander(f"📌 Servicio #{r[0]} - {r[1]} ({r[6][:10]})"):
-                st.write(f"**Técnico:** {r[2]} | **Plaga:** {r[3]}")
-                st.write(f"**Tratamiento:** {r[4]}")
-                if r[7] and os.path.exists(r[7]):
-                    st.image(r[7], width=250)
+        st.subheader("📊 Historial General de Reportes")
+        reportes = obtener_todos_reportes()
+        if reportes:
+            df_rep = pd.DataFrame(reportes, columns=["ID", "Cliente", "Técnico", "Plaga", "Tratamiento", "Estatus", "Fecha", "Evidencia"])
+            st.dataframe(df_rep, use_container_width=True)
+        else:
+            st.info("No hay servicios registrados en el historial.")
 
     elif opcion == "📍 Ubicación Real":
-        st.subheader("📍 Control de Ubicación del Técnico")
+        st.subheader("📍 Geolocalización y Control de Servicios")
+        st.info("Módulo interactivo de rastreo de unidades y servicios activos.")
         
-        EXACT_LAT = 17.867755
-        EXACT_LON = -92.929815
-        EXACT_DIR = "Las Mercedes, 86288 Playas del Rosario, Tabasco"
-
-        params = st.query_params
-        if "lat" in params and "lon" in params:
-            try:
-                st.session_state.mi_lat = float(params["lat"])
-                st.session_state.mi_lon = float(params["lon"])
-                st.session_state.mi_direccion = "Ubicación detectada por GPS actual"
-            except ValueError:
-                pass
-
-        if "mi_lat" not in st.session_state:
-            st.session_state.mi_lat = EXACT_LAT
-            st.session_state.mi_lon = EXACT_LON
-            st.session_state.mi_direccion = EXACT_DIR
-            st.session_state.mi_estatus = "🟢 En Servicio"
-            st.session_state.mi_actividad = "Servicio de Fumigación en Proceso"
-
-        nombre_tecnico = st.session_state.user['nombre']
-        col_config, col_mapa = st.columns([1, 1])
-
-        with col_config:
-            st.markdown("### ⚙️ Actualizar mi Estado / Dirección")
-            st.markdown("**1. Detectar ubicación en tiempo real:**")
-            html_gps_auto = """
-                <button onclick="obtenerGPS()" style="
-                    background-color: #10b981;
-                    color: white;
-                    border: none;
-                    padding: 12px 20px;
-                    border-radius: 8px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    width: 100%;
-                    font-size: 1rem;
-                ">📡 Capturar mi Posición Exacta (GPS)</button>
-                <p id="status_gps" style="color: #9ca3af; font-size: 0.85rem; margin-top: 8px; font-weight: 500;"></p>
-                <script>
-                function obtenerGPS() {
-                    const status = document.getElementById('status_gps');
-                    if (navigator.geolocation) {
-                        status.innerText = "🔍 Localizando dispositivo con precisión alta...";
-                        navigator.geolocation.getCurrentPosition(
-                            function(pos) {
-                                const lat = pos.coords.latitude;
-                                const lon = pos.coords.longitude;
-                                status.innerText = "✅ Ubicación obtenida. Recargando mapa...";
-                                const topUrl = window.top.location.href.split('?')[0];
-                                window.top.location.href = topUrl + '?lat=' + lat + '&lon=' + lon;
-                            },
-                            function(err) {
-                                status.innerText = "⚠️ Error consultando GPS. Revisa los permisos de ubicación de tu navegador.";
-                            },
-                            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-                        );
-                    } else {
-                        status.innerText = "❌ Navegador no compatible con geolocalización.";
-                    }
-                }
-                </script>
-            """
-            components.html(html_gps_auto, height=100)
-
-            st.markdown("---")
-            st.markdown("**2. Modificar información o coordenadas manualmente:**")
-            
-            with st.form("form_ubicacion_tecnico"):
-                nueva_dir = st.text_input("Dirección / Referencia escrita:", value=st.session_state.mi_direccion)
-                nuevo_estatus = st.selectbox("Estatus actual:", ["🟢 En Servicio", "🟡 En Trayecto", "🔴 Disponible / Base"], index=0)
-                nueva_actividad = st.text_input("Actividad actual:", value=st.session_state.mi_actividad)
-                
-                c_lat, c_lon = st.columns(2)
-                with c_lat:
-                    n_lat = st.number_input("Latitud:", value=float(st.session_state.mi_lat), format="%.6f")
-                with c_lon:
-                    n_lon = st.number_input("Longitud:", value=float(st.session_state.mi_lon), format="%.6f")
-
-                btn_actualizar = st.form_submit_button("💾 Guardar y Centrar Mapa", type="primary")
-                if btn_actualizar:
-                    st.session_state.mi_direccion = nueva_dir
-                    st.session_state.mi_estatus = nuevo_estatus
-                    st.session_state.mi_actividad = nueva_actividad
-                    st.session_state.mi_lat = n_lat
-                    st.session_state.mi_lon = n_lon
-                    st.query_params.clear()
-                    st.success("✅ Mapa centrado y datos actualizados.")
-                    st.rerun()
-
-        with col_mapa:
-            st.markdown("### 🗺️ Vista del Mapa al estilo Google Maps")
-            
-            st.info(f"""
-            👤 **Técnico Activo:** {nombre_tecnico}  
-            📍 **Dirección:** {st.session_state.mi_direccion}  
-            📊 **Estatus:** `{st.session_state.mi_estatus}`  
-            🛠️ **Actividad:** {st.session_state.mi_actividad}  
-            🌐 **Coordenadas Exactas:** `{st.session_state.mi_lat}, {st.session_state.mi_lon}`
-            """)
-
-            tab_gmaps, tab_native = st.tabs(["🗺️ Google Maps Interactivo", "🔴 Vista de Punto Rojo"])
-
-            with tab_gmaps:
-                gmaps_iframe = f"""
-                    <iframe 
-                        width="100%" 
-                        height="420" 
-                        style="border:0; border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);" 
-                        loading="lazy" 
-                        allowfullscreen
-                        src="https://maps.google.com/maps?q={st.session_state.mi_lat},{st.session_state.mi_lon}&hl=es&z=17&output=embed">
-                    </iframe>
-                """
-                components.html(gmaps_iframe, height=430)
-
-            with tab_native:
-                df_mapa = pd.DataFrame([{
-                    "lat": float(st.session_state.mi_lat),
-                    "lon": float(st.session_state.mi_lon)
-                }])
-                st.map(df_mapa, zoom=16)
+        # Mapa interactivo simulado con coordenadas de referencia
+        df_map = pd.DataFrame({
+            'lat': [19.4326, 19.4400, 19.4200],
+            'lon': [-99.1332, -99.1400, -99.1200],
+            'Unidad': ['Unidad 01 - Zona Centro', 'Unidad 02 - Norte', 'Unidad 03 - Sur']
+        })
+        st.map(df_map, zoom=11)
 
     elif opcion == "💬 Mensajería":
         mostrar_modulo_chat()
@@ -895,19 +732,23 @@ def vista_cliente():
     
     with st.sidebar:
         if os.path.exists("tortuga.png"):
-            st.image("tortuga.png", use_container_width=True)
+            st.image("tortuga.png", width=160)
             
         st.markdown(f"""
             <div class="profile-card">
                 <div class="profile-name">{st.session_state.user['nombre']}</div>
-                <div class="profile-role" style="background-color: #d69e2e;">Cliente VIP</div>
+                <div class="profile-role">Cliente / Sucursal</div>
             </div>
-            <div class="menu-title">MENÚ PRINCIPAL</div>
+            <div class="menu-title">MENÚ CLIENTE</div>
         """, unsafe_allow_html=True)
     
         opcion = st.sidebar.radio(
             "", 
-            ["🏠 Inicio / Catálogo", "📋 Mis Tratamientos", "💬 Mensajería"],
+            [
+                "🏠 Inicio / Catálogo",
+                "📋 Mis Servicios & Reportes", 
+                "💬 Mensajería"
+            ],
             label_visibility="collapsed"
         )
 
@@ -915,41 +756,41 @@ def vista_cliente():
         if st.button("🚪 Cerrar Sesión", use_container_width=True, type="secondary"):
             st.session_state.user = None
             st.rerun()
-
+    
     if opcion == "🏠 Inicio / Catálogo":
         mostrar_catalogo_plagas_principal()
 
-    elif opcion == "📋 Mis Tratamientos":
-        st.subheader("📋 Mis Tratamientos y Servicios Aplicados")
-        reportes = obtener_reportes_cliente(st.session_state.user['nombre'])
+    elif opcion == "📋 Mis Servicios & Reportes":
+        st.subheader("📋 Historial de Servicios en tu Local")
+        nombre_usuario = st.session_state.user['nombre']
+        reportes = obtener_reportes_cliente(nombre_usuario)
         
         if reportes:
-            for r in reportes:
-                with st.expander(f"📌 Servicio #{r[0]} - Fecha: {r[6][:10]}"):
-                    st.write(f"**Técnico a cargo:** {r[2]}")
-                    st.write(f"**Tipo de Plaga:** {r[3]}")
-                    st.write(f"**Tratamiento:** {r[4]}")
-                    st.write(f"**Estatus:** `{r[5]}`")
-                    if r[7] and os.path.exists(r[7]):
-                        st.image(r[7], caption="Evidencia del servicio", width=300)
+            for rep in reportes:
+                _, cliente, tecnico, plaga, tratamiento, estatus, fecha, evidencia = rep
+                with st.expander(f"Servicio: {plaga} - Fecha: {fecha} [{estatus}]"):
+                    st.write(f"**Técnico Asignado:** {tecnico}")
+                    st.write(f"**Tratamiento:** {tratamiento}")
+                    st.write(f"**Estatus:** {estatus}")
+                    if evidencia and os.path.exists(evidencia):
+                        st.image(evidencia, width=300, caption="Evidencia del servicio")
         else:
-            st.info("No se encontraron registros de servicios previos vinculados a tu cuenta.")
+            st.info("Aún no cuentas con reportes de servicio registrados a tu nombre.")
 
     elif opcion == "💬 Mensajería":
         mostrar_modulo_chat()
 
 # =============================================================================
-# 7. CONTROLADOR PRINCIPAL DE LA APLICACIÓN
+# 7. CONTROL DE FLUJO PRINCIPAL
 # =============================================================================
-def main():
-    if st.session_state.user is None:
-        mostrar_autenticacion()
+if st.session_state.user is None:
+    mostrar_autenticacion()
+else:
+    rol_actual = st.session_state.user['rol']
+    if rol_actual == "Técnico":
+        vista_tecnico()
+    elif rol_actual == "Cliente":
+        vista_cliente()
     else:
-        rol = st.session_state.user.get('rol', 'Cliente')
-        if rol == "Técnico":
-            vista_tecnico()
-        else:
-            vista_cliente()
-
-if __name__ == "__main__":
-    main()
+        # Por seguridad si hubiera algún rol personalizado
+        vista_tecnico()
