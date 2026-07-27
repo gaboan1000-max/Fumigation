@@ -704,6 +704,78 @@ def mostrar_autenticacion():
 # =============================================================================
 # 6. VISTAS PRINCIPALES (TÉCNICO Y CLIENTE)
 # =============================================================================
+def mostrar_ubicacion_real():
+    """Pide al navegador la ubicación real del dispositivo (GPS/Wi-Fi/IP)
+    mediante la API de geolocalización del navegador y la dibuja en un mapa
+    interactivo (Leaflet). Streamlit no tiene un componente nativo para esto,
+    por eso se inyecta HTML/JS. El navegador pedirá permiso de ubicación la
+    primera vez; si se rechaza o el dispositivo no lo soporta, se muestra un
+    mensaje claro en vez de fallar en silencio."""
+    st.subheader("📍 Geolocalización y Control de Servicios")
+    st.info("Tu navegador pedirá permiso para compartir tu ubicación. Acepta el permiso para verla en el mapa.")
+
+    html_geo = """
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div id="status" style="font-family: sans-serif; color: #9ca3af; margin-bottom: 8px;">
+        Solicitando ubicación...
+    </div>
+    <div id="map" style="height: 560px; border-radius: 12px; overflow: hidden;"></div>
+    <script>
+        const statusEl = document.getElementById('status');
+
+        function initMap(lat, lon, accuracy) {
+            statusEl.innerHTML = "Ubicación obtenida (precisión aprox. " + Math.round(accuracy) + " m)";
+            statusEl.style.color = "#10b981";
+            const map = L.map('map').setView([lat, lon], 16);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+            L.marker([lat, lon]).addTo(map).bindPopup('Tu ubicación actual').openPopup();
+            if (accuracy) {
+                L.circle([lat, lon], {
+                    radius: accuracy,
+                    color: '#3b82f6',
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.15
+                }).addTo(map);
+            }
+        }
+
+        function showError(mensaje) {
+            statusEl.innerHTML = mensaje;
+            statusEl.style.color = "#f87171";
+            document.getElementById('map').innerHTML =
+                '<div style="height:100%;display:flex;align-items:center;justify-content:center;' +
+                'background:#1f2937;color:#9ca3af;font-family:sans-serif;text-align:center;padding:20px;">' +
+                'No se pudo mostrar el mapa sin acceso a tu ubicación.</div>';
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => initMap(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+                (err) => {
+                    let msg = "No se pudo obtener tu ubicación (" + err.message + "). ";
+                    msg += "Revisa que hayas concedido permiso de ubicación a este sitio en tu navegador.";
+                    showError(msg);
+                },
+                { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+            );
+        } else {
+            showError("Este navegador no soporta geolocalización.");
+        }
+    </script>
+    """
+    components.html(html_geo, height=620, scrolling=False)
+
+    st.caption(
+        "Nota: la geolocalización requiere que el sitio se sirva por HTTPS "
+        "(o localhost). Si el navegador no muestra el diálogo de permiso, "
+        "revisa la configuración de privacidad del sitio."
+    )
+
+
 def vista_tecnico():
     aplicar_estilos_sidebar()
     
@@ -809,15 +881,7 @@ def vista_tecnico():
             st.info("No hay servicios registrados en el historial.")
 
     elif opcion == "📍 Ubicación Real":
-        st.subheader("📍 Geolocalización y Control de Servicios")
-        st.info("Módulo interactivo de rastreo de unidades y servicios activos.")
-        
-        df_map = pd.DataFrame({
-            'lat': [19.4326, 19.4400, 19.4200],
-            'lon': [-99.1332, -99.1400, -99.1200],
-            'Unidad': ['Unidad 01 - Zona Centro', 'Unidad 02 - Norte', 'Unidad 03 - Sur']
-        })
-        st.map(df_map, zoom=11)
+        mostrar_ubicacion_real()
 
     elif opcion == "💬 Mensajería":
         mostrar_modulo_chat()
