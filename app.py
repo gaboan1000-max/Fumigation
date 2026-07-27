@@ -773,7 +773,7 @@ def mostrar_autenticacion():
             # Logo ampliado a 220px
             st.image("tortuga.png", width=220)
         
-        st.markdown('<div class="brand-title">Corporativo<br>Angeles Digital</div>', unsafe_allow_html=True)
+        st.markdown('<div class="brand-title">Corporativo<br>Angeles Digitales</div>', unsafe_allow_html=True)
         st.markdown('<div class="brand-subtitle">Plataforma integral para el control de plagas, gestión de clientes y seguimiento en tiempo real.</div>', unsafe_allow_html=True)
         
         st.markdown("""
