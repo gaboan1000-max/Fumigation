@@ -258,13 +258,21 @@ def aplicar_estilos_globales():
 def aplicar_estilos_sidebar():
     st.markdown("""
         <style>
-            @keyframes sidebarSlideIn {
-                0% { opacity: 0; transform: translateX(-25px); }
-                100% { opacity: 1; transform: translateX(0); }
+            /* Antes esta animación usaba "transform: translateX(...)" sobre
+               el propio contenedor del sidebar. En móvil, Streamlit usa
+               justamente "transform" en ese mismo contenedor para abrirlo y
+               cerrarlo como cajón lateral; al animar transform ahí también,
+               las dos animaciones chocaban y el menú se quedaba "atorado"
+               a medio abrir, tapando el contenido (como en la captura).
+               Se cambia a una animación de solo opacidad, que no interfiere
+               con el mecanismo de apertura/cierre. */
+            @keyframes sidebarFadeIn {
+                0% { opacity: 0; }
+                100% { opacity: 1; }
             }
             [data-testid="stSidebar"] {
                 background-color: #1a1c23;
-                animation: sidebarSlideIn 0.40s ease-out forwards;
+                animation: sidebarFadeIn 0.40s ease-out;
             }
             [data-testid="stSidebar"] div[role="radiogroup"] label {
                 transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
