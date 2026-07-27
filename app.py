@@ -33,6 +33,11 @@ def init_db():
             telefono TEXT
         )
     ''')
+    # Migración: agrega la columna 'salt' si la BD ya existía sin ella
+    try:
+        c.execute("ALTER TABLE usuarios ADD COLUMN salt TEXT")
+    except sqlite3.OperationalError:
+        pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS clientes_registrados (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,11 +71,17 @@ def init_db():
     conn.commit()
     conn.close()
 
-def make_hashes(password):
-    return hashlib.sha256(str.encode(password)).hexdigest()
+def generar_salt():
+    return os.urandom(16).hex()
 
-def check_hashes(password, hashed_text):
-    return make_hashes(password) == hashed_text
+def make_hashes(password, salt):
+    return hashlib.sha256((salt + password).encode()).hexdigest()
+
+def check_hashes(password, salt, hashed_text):
+    if salt:
+        return make_hashes(password, salt) == hashed_text
+    # Compatibilidad con cuentas creadas antes de introducir el salt
+    return hashlib.sha256(str.encode(password)).hexdigest() == hashed_text
 
 init_db()
 
@@ -84,9 +95,11 @@ def agregar_usuario(nombre, correo, password, rol, telefono):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     try:
+        salt = generar_salt()
+        hashed = make_hashes(password, salt)
         c.execute(
-            "INSERT INTO usuarios(nombre, correo, password, rol, telefono) VALUES (?,?,?,?,?)",
-            (nombre, correo, make_hashes(password), rol, telefono)
+            "INSERT INTO usuarios(nombre, correo, password, rol, telefono, salt) VALUES (?,?,?,?,?,?)",
+            (nombre.strip(), correo.strip().lower(), hashed, rol, telefono.strip(), salt)
         )
         conn.commit()
         return True
@@ -98,11 +111,13 @@ def agregar_usuario(nombre, correo, password, rol, telefono):
 def login_usuario(correo, password):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute("SELECT * FROM usuarios WHERE correo = ?", (correo,))
+    c.execute("SELECT * FROM usuarios WHERE correo = ?", (correo.strip().lower(),))
     data = c.fetchone()
     conn.close()
-    if data and check_hashes(password, data[3]):
-        return data
+    if data:
+        salt = data[6] if len(data) > 6 else None
+        if check_hashes(password, salt, data[3]):
+            return data
     return None
 
 def agregar_cliente_db(nombre_local, responsable, telefono, direccion):
@@ -111,7 +126,7 @@ def agregar_cliente_db(nombre_local, responsable, telefono, direccion):
     try:
         c.execute(
             "INSERT INTO clientes_registrados(nombre_local, responsable, telefono, direccion) VALUES (?,?,?,?)",
-            (nombre_local, responsable, telefono, direccion)
+            (nombre_local.strip(), responsable.strip(), telefono.strip(), direccion.strip())
         )
         conn.commit()
         return True
@@ -157,9 +172,15 @@ def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_pat
     conn.close()
 
 def obtener_reportes_cliente(nombre_cliente):
+    # Comparación EXACTA (insensible a mayúsculas) para no filtrar reportes
+    # de otros clientes cuyo nombre solo coincida parcialmente (ej. "Ana"
+    # dentro de "Sucursal Ana María").
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute("SELECT * FROM reportes WHERE cliente_nombre LIKE ? ORDER BY fecha DESC", (f"%{nombre_cliente}%",))
+    c.execute(
+        "SELECT * FROM reportes WHERE cliente_nombre = ? COLLATE NOCASE ORDER BY fecha DESC",
+        (nombre_cliente,)
+    )
     datos = c.fetchall()
     conn.close()
     return datos
@@ -195,20 +216,51 @@ def obtener_conversacion(user1, user2):
 # =============================================================================
 # 3. ESTILOS, ANIMACIONES CSS Y BOTONES PROFESIONALES
 # =============================================================================
-def aplicar_estilos_sidebar():
+def aplicar_estilos_globales():
+    """Estilos que aplican a TODA la app, incluida la pantalla de login,
+    para que el botón principal y las pestañas mantengan siempre el mismo
+    color corporativo (antes solo se aplicaban dentro del panel, y el login
+    se quedaba con el color rojo/naranja por defecto de Streamlit)."""
     st.markdown("""
         <style>
             @keyframes fadeInSlideUp {
                 0% { opacity: 0; transform: translateY(18px); }
                 100% { opacity: 1; transform: translateY(0); }
             }
-            @keyframes sidebarSlideIn {
-                0% { opacity: 0; transform: translateX(-25px); }
-                100% { opacity: 1; transform: translateX(0); }
-            }
             .main .block-container {
                 animation: fadeInSlideUp 0.45s ease-out forwards;
                 padding-top: 2rem;
+            }
+
+            /* --- BOTONES PRINCIPALES: ESTILO AZUL CORPORATIVO --- */
+            button[kind="primary"] {
+                background-color: #1d4ed8 !important;
+                border: 1px solid #2563eb !important;
+                color: #ffffff !important;
+                transition: background-color 0.3s ease, transform 0.2s ease !important;
+            }
+            button[kind="primary"]:hover {
+                background-color: #2563eb !important;
+                border-color: #3b82f6 !important;
+                transform: translateY(-1px);
+            }
+
+            /* --- PESTAÑAS (TABS) --- */
+            .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+                color: #3b82f6 !important;
+            }
+            .stTabs [data-baseweb="tab-highlight"] {
+                background-color: #3b82f6 !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+def aplicar_estilos_sidebar():
+    st.markdown("""
+        <style>
+            @keyframes sidebarSlideIn {
+                0% { opacity: 0; transform: translateX(-25px); }
+                100% { opacity: 1; transform: translateX(0); }
             }
             [data-testid="stSidebar"] {
                 background-color: #1a1c23;
@@ -222,26 +274,6 @@ def aplicar_estilos_sidebar():
             [data-testid="stSidebar"] div[role="radiogroup"] label:hover {
                 background-color: rgba(255, 255, 255, 0.08);
                 transform: translateX(5px);
-            }
-            
-            /* --- BOTONES PRINCIPALES: ESTILO AZUL CORPORATIVO Y ELEGANTE --- */
-            button[kind="primary"] {
-                background-color: #1d4ed8 !important;
-                border: 1px solid #2563eb !important;
-                color: #ffffff !important;
-                transition: background-color 0.3s ease, transform 0.2s ease !important;
-            }
-            button[kind="primary"]:hover {
-                background-color: #2563eb !important;
-                border-color: #3b82f6 !important;
-            }
-
-            /* --- ESTILOS DE PESTAÑAS (TABS) --- */
-            .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
-                color: #3b82f6 !important;
-            }
-            .stTabs [data-baseweb="tab-highlight"] {
-                background-color: #3b82f6 !important;
             }
 
             .profile-card {
@@ -294,6 +326,10 @@ def aplicar_estilos_sidebar():
             }
         </style>
     """, unsafe_allow_html=True)
+
+# Los estilos globales (botones, pestañas, animación general) deben aplicar
+# siempre, estemos o no autenticados.
+aplicar_estilos_globales()
 
 def mostrar_modulo_chat():
     st.subheader("💬 Mensajería Interna")
@@ -535,6 +571,30 @@ def mostrar_autenticacion():
             .spacer {
                 margin-top: 60px;
             }
+            /* Tarjeta que envuelve el formulario de acceso para que no
+               quede "flotando" sobre el fondo, igual que el resto de
+               tarjetas de la app (perfil, features, etc). */
+            .auth-card-wrapper [data-testid="stForm"] {
+                background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+                border: 1px solid #374151;
+                border-radius: 14px;
+                padding: 28px 26px;
+                box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.35);
+            }
+            .auth-card-wrapper .stTextInput input {
+                background-color: #111827 !important;
+                border: 1px solid #374151 !important;
+            }
+            .auth-welcome {
+                font-size: 1.4rem;
+                font-weight: 700;
+                color: #ffffff;
+                margin-bottom: 2px;
+            }
+            .auth-caption {
+                color: #9ca3af;
+                margin-bottom: 18px;
+            }
             @media (max-width: 768px) {
                 .spacer { margin-top: 10px; }
                 .brand-title { font-size: 2rem; }
@@ -565,13 +625,14 @@ def mostrar_autenticacion():
 
     with col_auth:
         st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="auth-card-wrapper">', unsafe_allow_html=True)
         
         with st.container():
             tab_login, tab_registro = st.tabs(["🔐 Iniciar Sesión", "📝 Crear Cuenta Nueva"])
             
             with tab_login:
-                st.markdown("### ¡Bienvenido de nuevo!")
-                st.caption("Ingresa tus credenciales para acceder al panel de control.")
+                st.markdown('<div class="auth-welcome">¡Bienvenido de nuevo!</div>', unsafe_allow_html=True)
+                st.markdown('<div class="auth-caption">Ingresa tus credenciales para acceder al panel de control.</div>', unsafe_allow_html=True)
                 
                 with st.form("form_login", clear_on_submit=False):
                     correo = st.text_input("Correo electrónico", placeholder="ejemplo@empresa.com")
@@ -598,8 +659,8 @@ def mostrar_autenticacion():
                             st.warning("Por favor, completa ambos campos.")
 
             with tab_registro:
-                st.markdown("### Solicitud de Acceso")
-                st.caption("Registra tus datos para habilitar tu cuenta en la plataforma.")
+                st.markdown('<div class="auth-welcome">Solicitud de Acceso</div>', unsafe_allow_html=True)
+                st.markdown('<div class="auth-caption">Registra tus datos para habilitar tu cuenta en la plataforma.</div>', unsafe_allow_html=True)
                 
                 with st.form("form_registro", clear_on_submit=True):
                     nuevo_nombre = st.text_input("Nombre Completo / Razón Social", placeholder="Ej. Juan Pérez / Empresa S.A.")
@@ -611,22 +672,34 @@ def mostrar_autenticacion():
                     with col_r:
                         nuevo_rol = st.selectbox("Tipo de Usuario", ["Cliente", "Técnico"])
                     
-                    pass1 = st.text_input("Contraseña", type="password", placeholder="Crea una contraseña segura")
+                    pass1 = st.text_input("Contraseña", type="password", placeholder="Crea una contraseña segura (mín. 6 caracteres)")
                     pass2 = st.text_input("Confirmar Contraseña", type="password", placeholder="Repite tu contraseña")
                     
                     st.markdown("<br>", unsafe_allow_html=True)
                     reg_submit = st.form_submit_button("Registrar Cuenta", type="primary", use_container_width=True)
                     
                     if reg_submit:
-                        if not nuevo_nombre or not nuevo_correo or not pass1:
+                        nombre_limpio = nuevo_nombre.strip()
+                        correo_limpio = nuevo_correo.strip()
+                        telefono_limpio = nuevo_telefono.strip()
+
+                        if not nombre_limpio or not correo_limpio or not pass1:
                             st.warning("⚠️ Por favor, llena todos los campos obligatorios.")
+                        elif "@" not in correo_limpio or "." not in correo_limpio.split("@")[-1]:
+                            st.error("⚠️ Ingresa un correo electrónico válido.")
+                        elif telefono_limpio and (not telefono_limpio.isdigit() or len(telefono_limpio) != 10):
+                            st.error("⚠️ El teléfono debe contener exactamente 10 dígitos numéricos.")
+                        elif len(pass1) < 6:
+                            st.error("⚠️ La contraseña debe tener al menos 6 caracteres.")
                         elif pass1 != pass2:
                             st.error("⚠️ Las contraseñas no coinciden.")
                         else:
-                            if agregar_usuario(nuevo_nombre, nuevo_correo, pass1, nuevo_rol, nuevo_telefono):
+                            if agregar_usuario(nombre_limpio, correo_limpio, pass1, nuevo_rol, telefono_limpio):
                                 st.success("✅ Cuenta creada exitosamente. Ahora puedes iniciar sesión.")
                             else:
                                 st.error("❌ El correo ingresado ya se encuentra registrado.")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # =============================================================================
 # 6. VISTAS PRINCIPALES (TÉCNICO Y CLIENTE)
@@ -687,7 +760,10 @@ def vista_tecnico():
             if submit_serv:
                 path_img = ""
                 if evidencia:
-                    path_img = os.path.join("uploads", evidencia.name)
+                    # Se antepone fecha/hora al nombre del archivo para evitar que
+                    # dos evidencias con el mismo nombre se sobrescriban entre sí.
+                    nombre_unico = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{evidencia.name}"
+                    path_img = os.path.join("uploads", nombre_unico)
                     with open(path_img, "wb") as f:
                         f.write(evidencia.getbuffer())
                 
@@ -706,7 +782,7 @@ def vista_tecnico():
                 
                 btn_cli = st.form_submit_button("Guardar Cliente", type="primary")
                 if btn_cli:
-                    if nombre_local:
+                    if nombre_local.strip():
                         if agregar_cliente_db(nombre_local, responsable, tel_local, dir_local):
                             st.success("✅ Cliente registrado con éxito.")
                             st.rerun()
