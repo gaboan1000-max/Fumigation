@@ -12,7 +12,7 @@ import streamlit.components.v1 as components
 FAVICON = "tortuga.png" if os.path.exists("tortuga.png") else "🐢"
 
 st.set_page_config(
-    page_title="Gestión de Fumigaciones & Control de Plagas",
+    page_title="Gestión de Fumigaciones & Control de Plagas (Corporativo Ángeles Digital)",
     page_icon=FAVICON,
     layout="wide",
     initial_sidebar_state="expanded"
