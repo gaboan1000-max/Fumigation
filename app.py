@@ -335,6 +335,160 @@ def aplicar_estilos_sidebar():
         </style>
     """, unsafe_allow_html=True)
 
+def aplicar_estilos_navegacion():
+    """Estilos de la barra de navegación superior (escritorio) y las reglas
+    responsive que deciden si se muestra esa barra o el menú lateral."""
+    st.markdown("""
+        <style>
+            /* Nota: st.container(key="topnav_wrapper") genera automáticamente
+               la clase .st-key-topnav_wrapper en su div contenedor; por eso
+               se usa ese selector en vez de una clase propia. */
+            .st-key-topnav_wrapper {
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                padding: 10px 20px;
+                margin-bottom: 1.6rem;
+                background: linear-gradient(135deg, #1f2937 0%, #161b26 100%);
+                border: 1px solid #2d3341;
+                border-radius: 14px;
+                box-shadow: 0px 4px 14px rgba(0, 0, 0, 0.25);
+            }
+            .st-key-topnav_wrapper div[role="radiogroup"] {
+                flex-direction: row !important;
+                flex-wrap: wrap;
+                gap: 2px;
+            }
+            .st-key-topnav_wrapper div[role="radiogroup"] label {
+                padding: 8px 14px;
+                border-radius: 8px;
+                transition: background-color 0.2s ease;
+                cursor: pointer;
+            }
+            .st-key-topnav_wrapper div[role="radiogroup"] label:hover {
+                background-color: rgba(255, 255, 255, 0.07);
+            }
+            .st-key-topnav_wrapper div[role="radiogroup"] label:has(input:checked) {
+                background-color: rgba(59, 130, 246, 0.16);
+            }
+            .st-key-topnav_wrapper div[role="radiogroup"] label:has(input:checked) p {
+                color: #3b82f6 !important;
+                font-weight: 700 !important;
+            }
+            .topnav-user {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                line-height: 1.25;
+                white-space: nowrap;
+            }
+            .topnav-user-name {
+                color: #ffffff;
+                font-weight: 700;
+                font-size: 0.92rem;
+            }
+            .topnav-user-role {
+                color: #10b981;
+                font-size: 0.72rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+            }
+
+            /* Escritorio: se oculta el menú lateral nativo porque la
+               navegación se movió a la barra superior. */
+            @media (min-width: 769px) {
+                [data-testid="stSidebar"] { display: none !important; }
+                [data-testid="stSidebarCollapsedControl"] { display: none !important; }
+            }
+            /* Móvil: se oculta la barra superior y se conserva el menú
+               lateral (cajón) tal como estaba. */
+            @media (max-width: 768px) {
+                .st-key-topnav_wrapper { display: none !important; }
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+def mostrar_navegacion(opciones, session_key, rol_label):
+    """Barra de navegación superior (escritorio) + menú lateral (móvil),
+    sincronizados mediante st.session_state para que ambos reflejen siempre
+    la misma sección activa aunque solo uno esté visible según el ancho de
+    pantalla. Devuelve la opción actualmente seleccionada."""
+    aplicar_estilos_navegacion()
+
+    if session_key not in st.session_state:
+        st.session_state[session_key] = opciones[0]
+
+    def _sync_top():
+        st.session_state[session_key] = st.session_state[f"{session_key}_top"]
+
+    def _sync_side():
+        st.session_state[session_key] = st.session_state[f"{session_key}_side"]
+
+    indice_actual = opciones.index(st.session_state[session_key])
+
+    # --- Barra superior (visible en escritorio) ---
+    # Se usa st.container(key=...) -- soporte nativo de Streamlit para
+    # aplicar una clase CSS estable a un contenedor -- en vez del truco de
+    # abrir/cerrar un <div> con st.markdown, que NO envuelve realmente los
+    # widgets (cada llamada a st.markdown genera su propio bloque aislado
+    # en el DOM). Si la versión de Streamlit instalada es anterior a la
+    # 1.32 (sin soporte para 'key' en st.container), se usa un contenedor
+    # normal como respaldo: se pierde la tarjeta con color de fondo, pero
+    # la navegación sigue funcionando igual.
+    try:
+        contenedor_nav_superior = st.container(key="topnav_wrapper")
+    except TypeError:
+        contenedor_nav_superior = st.container()
+
+    with contenedor_nav_superior:
+        col_logo, col_menu, col_user = st.columns([0.6, 3.6, 1.6])
+        with col_logo:
+            if os.path.exists("tortuga.png"):
+                st.image("tortuga.png", width=40)
+        with col_menu:
+            st.radio(
+                "", opciones, key=f"{session_key}_top",
+                index=indice_actual, horizontal=True,
+                label_visibility="collapsed", on_change=_sync_top
+            )
+        with col_user:
+            st.markdown(f"""
+                <div class="topnav-user">
+                    <span class="topnav-user-name">{st.session_state.user['nombre']}</span>
+                    <span class="topnav-user-role">{rol_label}</span>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.button("Cerrar sesión", key=f"{session_key}_logout_top", use_container_width=True, type="secondary"):
+                st.session_state.user = None
+                st.rerun()
+
+    # --- Menú lateral (visible en móvil, igual que antes) ---
+    with st.sidebar:
+        if os.path.exists("tortuga.png"):
+            st.image("tortuga.png", width=160)
+
+        st.markdown(f"""
+            <div class="profile-card">
+                <div class="profile-name">{st.session_state.user['nombre']}</div>
+                <div class="profile-role">{rol_label}</div>
+            </div>
+            <div class="menu-title">MENÚ PRINCIPAL</div>
+        """, unsafe_allow_html=True)
+
+        st.radio(
+            "", opciones, key=f"{session_key}_side",
+            index=indice_actual, label_visibility="collapsed",
+            on_change=_sync_side
+        )
+
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        if st.button("🚪 Cerrar Sesión", key=f"{session_key}_logout_side", use_container_width=True, type="secondary"):
+            st.session_state.user = None
+            st.rerun()
+
+    return st.session_state[session_key]
+
 # Los estilos globales (botones, pestañas, animación general) deben aplicar
 # siempre, estemos o no autenticados.
 aplicar_estilos_globales()
@@ -786,36 +940,19 @@ def mostrar_ubicacion_real():
 
 def vista_tecnico():
     aplicar_estilos_sidebar()
-    
-    with st.sidebar:
-        if os.path.exists("tortuga.png"):
-            st.image("tortuga.png", width=160)
-            
-        st.markdown(f"""
-            <div class="profile-card">
-                <div class="profile-name">{st.session_state.user['nombre']}</div>
-                <div class="profile-role">Técnico Especialista</div>
-            </div>
-            <div class="menu-title">MENÚ PRINCIPAL</div>
-        """, unsafe_allow_html=True)
-    
-        opcion = st.sidebar.radio(
-            "", 
-            [
-                "🏠 Inicio / Catálogo",
-                "➕ Registrar Servicio", 
-                "👥 Gestión Clientes", 
-                "📊 Historial & Reportes", 
-                "📍 Ubicación Real", 
-                "💬 Mensajería"
-            ],
-            label_visibility="collapsed"
-        )
 
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        if st.button("🚪 Cerrar Sesión", use_container_width=True, type="secondary"):
-            st.session_state.user = None
-            st.rerun()
+    opcion = mostrar_navegacion(
+        [
+            "🏠 Inicio / Catálogo",
+            "➕ Registrar Servicio",
+            "👥 Gestión Clientes",
+            "📊 Historial & Reportes",
+            "📍 Ubicación Real",
+            "💬 Mensajería"
+        ],
+        session_key="nav_tecnico",
+        rol_label="Técnico Especialista"
+    )
     
     if opcion == "🏠 Inicio / Catálogo":
         mostrar_catalogo_plagas_principal()
@@ -896,33 +1033,16 @@ def vista_tecnico():
 
 def vista_cliente():
     aplicar_estilos_sidebar()
-    
-    with st.sidebar:
-        if os.path.exists("tortuga.png"):
-            st.image("tortuga.png", width=160)
-            
-        st.markdown(f"""
-            <div class="profile-card">
-                <div class="profile-name">{st.session_state.user['nombre']}</div>
-                <div class="profile-role">Cliente / Sucursal</div>
-            </div>
-            <div class="menu-title">MENÚ CLIENTE</div>
-        """, unsafe_allow_html=True)
-    
-        opcion = st.sidebar.radio(
-            "", 
-            [
-                "🏠 Inicio / Catálogo",
-                "📋 Mis Servicios & Reportes", 
-                "💬 Mensajería"
-            ],
-            label_visibility="collapsed"
-        )
 
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        if st.button("🚪 Cerrar Sesión", use_container_width=True, type="secondary"):
-            st.session_state.user = None
-            st.rerun()
+    opcion = mostrar_navegacion(
+        [
+            "🏠 Inicio / Catálogo",
+            "📋 Mis Servicios & Reportes",
+            "💬 Mensajería"
+        ],
+        session_key="nav_cliente",
+        rol_label="Cliente / Sucursal"
+    )
     
     if opcion == "🏠 Inicio / Catálogo":
         mostrar_catalogo_plagas_principal()
