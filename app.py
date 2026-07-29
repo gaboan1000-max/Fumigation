@@ -128,13 +128,15 @@ def obtener_tecnico_por_codigo(codigo):
 def obtener_codigo_tecnico(correo_tecnico):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute("SELECT codigo_tecnico FROM usuarios WHERE correo = ?", (correo_tecnico,))
+    c.execute("SELECT codigo_tecnico FROM usuarios WHERE correo = ?", (correo_tecnico.strip().lower(),))
     fila = c.fetchone()
     conn.close()
     return fila[0] if fila else None
 
 def generar_codigo_tecnico(correo_tecnico):
-    """Genera (o reemplaza) el código personal de un técnico."""
+    """Genera (o reemplaza) el código personal de un técnico. Devuelve el
+    código nuevo, o None si no se encontró ninguna cuenta con ese correo
+    (para poder avisar en vez de fallar en silencio)."""
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     while True:
@@ -142,10 +144,14 @@ def generar_codigo_tecnico(correo_tecnico):
         c.execute("SELECT 1 FROM usuarios WHERE codigo_tecnico = ?", (codigo,))
         if not c.fetchone():
             break
-    c.execute("UPDATE usuarios SET codigo_tecnico = ? WHERE correo = ?", (codigo, correo_tecnico))
+    c.execute(
+        "UPDATE usuarios SET codigo_tecnico = ? WHERE correo = ?",
+        (codigo, correo_tecnico.strip().lower())
+    )
+    filas_afectadas = c.rowcount
     conn.commit()
     conn.close()
-    return codigo
+    return codigo if filas_afectadas > 0 else None
 
 def agregar_usuario(nombre, correo, password, rol, telefono, codigo_tecnico_ingresado=""):
     conn = sqlite3.connect(DB_NAME)
@@ -1095,8 +1101,15 @@ def vista_tecnico():
                 st.info("Todavía no tienes un código generado.")
             texto_boton_codigo = "🔄 Regenerar código" if codigo_tecnico_actual else "✨ Generar mi código"
             if st.button(texto_boton_codigo, key="btn_generar_codigo_tecnico"):
-                generar_codigo_tecnico(correo_tecnico_actual)
-                st.rerun()
+                nuevo_codigo = generar_codigo_tecnico(correo_tecnico_actual)
+                if nuevo_codigo:
+                    st.rerun()
+                else:
+                    st.error(
+                        "⚠️ No se pudo generar el código: no se encontró tu cuenta "
+                        "por correo. Intenta cerrar sesión y volver a entrar, y si "
+                        "sigue sin funcionar avísame."
+                    )
 
         st.markdown("---")
         
