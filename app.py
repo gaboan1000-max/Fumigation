@@ -359,6 +359,18 @@ def aplicar_estilos_navegacion():
                 flex-wrap: wrap;
                 gap: 2px;
             }
+            /* Oculta el círculo/punto indicador del radio (solo en esta
+               barra superior; el menú lateral de móvil no se toca). El
+               <input> real se mantiene funcional, solo se hace invisible;
+               el primer div del label es el envoltorio del círculo, que
+               también se oculta por si el navegador dibuja ahí el punto
+               en vez de en el input nativo. */
+            .st-key-topnav_wrapper div[role="radiogroup"] input[type="radio"] {
+                display: none !important;
+            }
+            .st-key-topnav_wrapper div[role="radiogroup"] label > div:first-child {
+                display: none !important;
+            }
             .st-key-topnav_wrapper div[role="radiogroup"] label {
                 padding: 8px 14px;
                 border-radius: 8px;
@@ -773,7 +785,7 @@ def mostrar_autenticacion():
             # Logo ampliado a 220px
             st.image("tortuga.png", width=220)
         
-        st.markdown('<div class="brand-title">Corporativo<br>Angeles Digitales</div>', unsafe_allow_html=True)
+        st.markdown('<div class="brand-title">Gestión Profesional<br>de Fumigaciones</div>', unsafe_allow_html=True)
         st.markdown('<div class="brand-subtitle">Plataforma integral para el control de plagas, gestión de clientes y seguimiento en tiempo real.</div>', unsafe_allow_html=True)
         
         st.markdown("""
