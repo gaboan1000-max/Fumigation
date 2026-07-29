@@ -2,6 +2,7 @@ import streamlit as st
 import sqlite3
 import hashlib
 import os
+import random
 from datetime import datetime
 import pandas as pd
 import streamlit.components.v1 as components
@@ -19,6 +20,12 @@ st.set_page_config(
 )
 
 DB_NAME = "fumigaciones.db"
+
+# Alfabeto sin 0/O/1/I/L para evitar confusiones al dictar o leer el código.
+_CODIGO_ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+def _generar_codigo_aleatorio(longitud=6):
+    return "".join(random.choice(_CODIGO_ALFABETO) for _ in range(longitud))
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
@@ -38,6 +45,13 @@ def init_db():
         c.execute("ALTER TABLE usuarios ADD COLUMN salt TEXT")
     except sqlite3.OperationalError:
         pass
+    # Migración: código personal de cada técnico, para que sus clientes
+    # nuevos se autoregistren y queden agregados a su lista sin que el
+    # técnico tenga que darlos de alta a mano.
+    try:
+        c.execute("ALTER TABLE usuarios ADD COLUMN codigo_tecnico TEXT")
+    except sqlite3.OperationalError:
+        pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS clientes_registrados (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,6 +61,13 @@ def init_db():
             direccion TEXT
         )
     ''')
+    # Migración: qué técnico quedó asignado a este cliente (solo
+    # informativo, se llena cuando el cliente se autoregistra con un
+    # código de técnico).
+    try:
+        c.execute("ALTER TABLE clientes_registrados ADD COLUMN tecnico_asignado TEXT")
+    except sqlite3.OperationalError:
+        pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS reportes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,10 +112,54 @@ if not os.path.exists("uploads"):
 # =============================================================================
 # 2. FUNCIONES DE BASE DE DATOS
 # =============================================================================
-def agregar_usuario(nombre, correo, password, rol, telefono):
+def obtener_tecnico_por_codigo(codigo):
+    """Devuelve el nombre del técnico dueño de ese código, o None si el
+    código no existe o no pertenece a un técnico."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        "SELECT nombre FROM usuarios WHERE codigo_tecnico = ? AND rol = 'Técnico'",
+        (codigo.strip().upper(),)
+    )
+    fila = c.fetchone()
+    conn.close()
+    return fila[0] if fila else None
+
+def obtener_codigo_tecnico(correo_tecnico):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT codigo_tecnico FROM usuarios WHERE correo = ?", (correo_tecnico,))
+    fila = c.fetchone()
+    conn.close()
+    return fila[0] if fila else None
+
+def generar_codigo_tecnico(correo_tecnico):
+    """Genera (o reemplaza) el código personal de un técnico."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    while True:
+        codigo = _generar_codigo_aleatorio()
+        c.execute("SELECT 1 FROM usuarios WHERE codigo_tecnico = ?", (codigo,))
+        if not c.fetchone():
+            break
+    c.execute("UPDATE usuarios SET codigo_tecnico = ? WHERE correo = ?", (codigo, correo_tecnico))
+    conn.commit()
+    conn.close()
+    return codigo
+
+def agregar_usuario(nombre, correo, password, rol, telefono, codigo_tecnico_ingresado=""):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     try:
+        # Si se registra como Cliente y trae un código de técnico válido,
+        # se valida ANTES de crear la cuenta (si es inválido, se avisa y
+        # no se crea nada, para que el cliente pueda corregirlo).
+        tecnico_asignado = None
+        if rol == "Cliente" and codigo_tecnico_ingresado.strip():
+            tecnico_asignado = obtener_tecnico_por_codigo(codigo_tecnico_ingresado)
+            if not tecnico_asignado:
+                return "codigo_invalido"
+
         salt = generar_salt()
         hashed = make_hashes(password, salt)
         c.execute(
@@ -102,9 +167,16 @@ def agregar_usuario(nombre, correo, password, rol, telefono):
             (nombre.strip(), correo.strip().lower(), hashed, rol, telefono.strip(), salt)
         )
         conn.commit()
-        return True
+
+        # Con el código validado, se da de alta automáticamente el local
+        # del cliente (si no existía ya uno con ese nombre) para que el
+        # técnico no tenga que registrarlo a mano en "Gestión Clientes".
+        if tecnico_asignado:
+            agregar_cliente_db(nombre.strip(), nombre.strip(), telefono.strip(), "", tecnico_asignado)
+
+        return "ok"
     except sqlite3.IntegrityError:
-        return False
+        return "email_duplicado"
     finally:
         conn.close()
 
@@ -120,13 +192,13 @@ def login_usuario(correo, password):
             return data
     return None
 
-def agregar_cliente_db(nombre_local, responsable, telefono, direccion):
+def agregar_cliente_db(nombre_local, responsable, telefono, direccion, tecnico_asignado=None):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     try:
         c.execute(
-            "INSERT INTO clientes_registrados(nombre_local, responsable, telefono, direccion) VALUES (?,?,?,?)",
-            (nombre_local.strip(), responsable.strip(), telefono.strip(), direccion.strip())
+            "INSERT INTO clientes_registrados(nombre_local, responsable, telefono, direccion, tecnico_asignado) VALUES (?,?,?,?,?)",
+            (nombre_local.strip(), responsable.strip(), telefono.strip(), direccion.strip(), tecnico_asignado)
         )
         conn.commit()
         return True
@@ -838,6 +910,14 @@ def mostrar_autenticacion():
                         nuevo_telefono = st.text_input("Teléfono Móvil", placeholder="10 dígitos")
                     with col_r:
                         nuevo_rol = st.selectbox("Tipo de Usuario", ["Cliente", "Técnico"])
+
+                    nuevo_codigo_tecnico = st.text_input(
+                        "Código del técnico (opcional)",
+                        placeholder="Ej. AB12CD",
+                        help="Solo aplica si te registras como Cliente. Pídeselo a tu técnico: "
+                             "así quedas agregado automáticamente como su cliente, sin que él "
+                             "tenga que darte de alta a mano."
+                    )
                     
                     pass1 = st.text_input("Contraseña", type="password", placeholder="Crea una contraseña segura (mín. 6 caracteres)")
                     pass2 = st.text_input("Confirmar Contraseña", type="password", placeholder="Repite tu contraseña")
@@ -849,6 +929,7 @@ def mostrar_autenticacion():
                         nombre_limpio = nuevo_nombre.strip()
                         correo_limpio = nuevo_correo.strip()
                         telefono_limpio = nuevo_telefono.strip()
+                        codigo_limpio = nuevo_codigo_tecnico.strip()
 
                         if not nombre_limpio or not correo_limpio or not pass1:
                             st.warning("⚠️ Por favor, llena todos los campos obligatorios.")
@@ -861,8 +942,11 @@ def mostrar_autenticacion():
                         elif pass1 != pass2:
                             st.error("⚠️ Las contraseñas no coinciden.")
                         else:
-                            if agregar_usuario(nombre_limpio, correo_limpio, pass1, nuevo_rol, telefono_limpio):
+                            resultado = agregar_usuario(nombre_limpio, correo_limpio, pass1, nuevo_rol, telefono_limpio, codigo_limpio)
+                            if resultado == "ok":
                                 st.success("✅ Cuenta creada exitosamente. Ahora puedes iniciar sesión.")
+                            elif resultado == "codigo_invalido":
+                                st.error("⚠️ El código de técnico no es válido. Verifícalo o deja el campo vacío.")
                             else:
                                 st.error("❌ El correo ingresado ya se encuentra registrado.")
         
@@ -994,6 +1078,27 @@ def vista_tecnico():
 
     elif opcion == "👥 Gestión Clientes":
         st.subheader("👥 Gestión de Clientes y Locales")
+
+        # --- Código personal del técnico para autoregistro de clientes ---
+        correo_tecnico_actual = st.session_state.user['correo']
+        codigo_tecnico_actual = obtener_codigo_tecnico(correo_tecnico_actual)
+        with st.container():
+            st.markdown("#### 🔑 Tu código para nuevos clientes")
+            st.caption(
+                "Compártelo con tus clientes nuevos: al crear su cuenta como Cliente "
+                "pueden anexarlo (es opcional) y quedan agregados aquí automáticamente, "
+                "sin que tengas que registrarlos a mano."
+            )
+            if codigo_tecnico_actual:
+                st.code(codigo_tecnico_actual, language=None)
+            else:
+                st.info("Todavía no tienes un código generado.")
+            texto_boton_codigo = "🔄 Regenerar código" if codigo_tecnico_actual else "✨ Generar mi código"
+            if st.button(texto_boton_codigo, key="btn_generar_codigo_tecnico"):
+                generar_codigo_tecnico(correo_tecnico_actual)
+                st.rerun()
+
+        st.markdown("---")
         
         with st.expander("➕ Registrar Nuevo Local o Cliente"):
             with st.form("form_nuevo_cliente", clear_on_submit=True):
@@ -1016,7 +1121,7 @@ def vista_tecnico():
         st.markdown("### Listado de Clientes Registrados")
         clientes_detalle = obtener_todos_clientes_detalle()
         if clientes_detalle:
-            df_clientes = pd.DataFrame(clientes_detalle, columns=["ID", "Local/Empresa", "Responsable", "Teléfono", "Dirección"])
+            df_clientes = pd.DataFrame(clientes_detalle, columns=["ID", "Local/Empresa", "Responsable", "Teléfono", "Dirección", "Técnico Asignado"])
             st.dataframe(df_clientes.drop(columns=["ID"]), use_container_width=True)
         else:
             st.info("No hay clientes registrados todavía.")
