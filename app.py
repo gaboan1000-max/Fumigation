@@ -820,7 +820,7 @@ def mostrar_autenticacion():
         if os.path.exists("tortuga.png"):
             st.image("tortuga.png", width=220)
         
-        st.markdown('<div class="brand-title">Gestión Profesional<br>de Fumigaciones</div>', unsafe_allow_html=True)
+        st.markdown('<div class="brand-title">Gestión <br>de Fumigaciones Corporativo Los Angeles</div>', unsafe_allow_html=True)
         st.markdown('<div class="brand-subtitle">Plataforma integral para el control de plagas, gestión de clientes y seguimiento en tiempo real.</div>', unsafe_allow_html=True)
         
         st.markdown("""
