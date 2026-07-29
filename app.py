@@ -1086,6 +1086,12 @@ def vista_tecnico():
         st.subheader("👥 Gestión de Clientes y Locales")
 
         # --- Código personal del técnico para autoregistro de clientes ---
+        # Nota: se actualiza la variable local "codigo_tecnico_actual" en la
+        # misma pasada del script en vez de usar st.rerun(). Antes se hacía
+        # rerun después de generar el código, y era en el único lugar de la
+        # app donde eso parecía llevar de vuelta a "Inicio"; quitarlo evita
+        # ese salto por completo y además se ve el código al instante, sin
+        # parpadeo de recarga.
         correo_tecnico_actual = st.session_state.user['correo']
         codigo_tecnico_actual = obtener_codigo_tecnico(correo_tecnico_actual)
         with st.container():
@@ -1095,21 +1101,24 @@ def vista_tecnico():
                 "pueden anexarlo (es opcional) y quedan agregados aquí automáticamente, "
                 "sin que tengas que registrarlos a mano."
             )
-            if codigo_tecnico_actual:
-                st.code(codigo_tecnico_actual, language=None)
-            else:
-                st.info("Todavía no tienes un código generado.")
+
             texto_boton_codigo = "🔄 Regenerar código" if codigo_tecnico_actual else "✨ Generar mi código"
             if st.button(texto_boton_codigo, key="btn_generar_codigo_tecnico"):
                 nuevo_codigo = generar_codigo_tecnico(correo_tecnico_actual)
                 if nuevo_codigo:
-                    st.rerun()
+                    codigo_tecnico_actual = nuevo_codigo
+                    st.success(f"✅ Código generado: {nuevo_codigo}")
                 else:
                     st.error(
                         "⚠️ No se pudo generar el código: no se encontró tu cuenta "
                         "por correo. Intenta cerrar sesión y volver a entrar, y si "
                         "sigue sin funcionar avísame."
                     )
+
+            if codigo_tecnico_actual:
+                st.code(codigo_tecnico_actual, language=None)
+            else:
+                st.info("Todavía no tienes un código generado.")
 
         st.markdown("---")
         
