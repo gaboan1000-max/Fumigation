@@ -40,14 +40,10 @@ def init_db():
             telefono TEXT
         )
     ''')
-    # Migración: agrega la columna 'salt' si la BD ya existía sin ella
     try:
         c.execute("ALTER TABLE usuarios ADD COLUMN salt TEXT")
     except sqlite3.OperationalError:
         pass
-    # Migración: código personal de cada técnico, para que sus clientes
-    # nuevos se autoregistren y queden agregados a su lista sin que el
-    # técnico tenga que darlos de alta a mano.
     try:
         c.execute("ALTER TABLE usuarios ADD COLUMN codigo_tecnico TEXT")
     except sqlite3.OperationalError:
@@ -61,9 +57,6 @@ def init_db():
             direccion TEXT
         )
     ''')
-    # Migración: qué técnico quedó asignado a este cliente (solo
-    # informativo, se llena cuando el cliente se autoregistra con un
-    # código de técnico).
     try:
         c.execute("ALTER TABLE clientes_registrados ADD COLUMN tecnico_asignado TEXT")
     except sqlite3.OperationalError:
@@ -101,7 +94,6 @@ def make_hashes(password, salt):
 def check_hashes(password, salt, hashed_text):
     if salt:
         return make_hashes(password, salt) == hashed_text
-    # Compatibilidad con cuentas creadas antes de introducir el salt
     return hashlib.sha256(str.encode(password)).hexdigest() == hashed_text
 
 init_db()
@@ -113,8 +105,6 @@ if not os.path.exists("uploads"):
 # 2. FUNCIONES DE BASE DE DATOS
 # =============================================================================
 def obtener_tecnico_por_codigo(codigo):
-    """Devuelve el nombre del técnico dueño de ese código, o None si el
-    código no existe o no pertenece a un técnico."""
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
@@ -134,9 +124,6 @@ def obtener_codigo_tecnico(correo_tecnico):
     return fila[0] if fila else None
 
 def generar_codigo_tecnico(correo_tecnico):
-    """Genera (o reemplaza) el código personal de un técnico. Devuelve el
-    código nuevo, o None si no se encontró ninguna cuenta con ese correo
-    (para poder avisar en vez de fallar en silencio)."""
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     while True:
@@ -157,9 +144,6 @@ def agregar_usuario(nombre, correo, password, rol, telefono, codigo_tecnico_ingr
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     try:
-        # Si se registra como Cliente y trae un código de técnico válido,
-        # se valida ANTES de crear la cuenta (si es inválido, se avisa y
-        # no se crea nada, para que el cliente pueda corregirlo).
         tecnico_asignado = None
         if rol == "Cliente" and codigo_tecnico_ingresado.strip():
             tecnico_asignado = obtener_tecnico_por_codigo(codigo_tecnico_ingresado)
@@ -174,9 +158,6 @@ def agregar_usuario(nombre, correo, password, rol, telefono, codigo_tecnico_ingr
         )
         conn.commit()
 
-        # Con el código validado, se da de alta automáticamente el local
-        # del cliente (si no existía ya uno con ese nombre) para que el
-        # técnico no tenga que registrarlo a mano en "Gestión Clientes".
         if tecnico_asignado:
             agregar_cliente_db(nombre.strip(), nombre.strip(), telefono.strip(), "", tecnico_asignado)
 
@@ -462,13 +443,32 @@ def mostrar_navegacion(opciones, session_key, rol_label):
 
     indice_actual = opciones.index(st.session_state[session_key])
 
+    # Lógica centralizada para obtener el código si el usuario es Técnico
+    codigo_html_top = ""
+    codigo_html_side = ""
+    es_tecnico = st.session_state.user['rol'] == 'Técnico'
+    correo_usuario = st.session_state.user['correo']
+    codigo_tecnico = None
+
+    if es_tecnico:
+        codigo_tecnico = obtener_codigo_tecnico(correo_usuario)
+        if codigo_tecnico:
+            codigo_html_top = f'<div style="color:#3b82f6; font-size: 0.85rem; font-weight: 700; margin-top: 4px;">Código: {codigo_tecnico}</div>'
+            codigo_html_side = f'<div style="color:#3b82f6; font-size: 0.95rem; font-weight: 700; margin-top: 8px;">Código: {codigo_tecnico}</div>'
+        else:
+            codigo_html_top = f'<div style="color:#f87171; font-size: 0.85rem; font-weight: 700; margin-top: 4px;">Sin código</div>'
+            codigo_html_side = f'<div style="color:#f87171; font-size: 0.95rem; font-weight: 700; margin-top: 8px;">Sin código</div>'
+
     try:
         contenedor_nav_superior = st.container(key="topnav_wrapper")
     except TypeError:
         contenedor_nav_superior = st.container()
 
+    # ==========================================
+    # ENTORNO PC (Barra Superior)
+    # ==========================================
     with contenedor_nav_superior:
-        col_logo, col_menu, col_user = st.columns([0.6, 3.6, 1.6])
+        col_logo, col_menu, col_user = st.columns([0.5, 3.3, 2.2])
         with col_logo:
             if os.path.exists("tortuga.png"):
                 st.image("tortuga.png", width=40)
@@ -489,12 +489,26 @@ def mostrar_navegacion(opciones, session_key, rol_label):
                 <div class="topnav-user">
                     <span class="topnav-user-name">{st.session_state.user['nombre']}</span>
                     <span class="topnav-user-role">{rol_label}</span>
+                    {codigo_html_top}
                 </div>
             """, unsafe_allow_html=True)
-            if st.button("Cerrar sesión", key=f"{session_key}_logout_top", use_container_width=True, type="secondary"):
-                st.session_state.user = None
-                st.rerun()
+            
+            # Controles en PC
+            col_btn_gen, col_btn_out = st.columns(2)
+            with col_btn_gen:
+                if es_tecnico:
+                    texto_btn = "Regenerar" if codigo_tecnico else "Generar Código"
+                    if st.button(texto_btn, key=f"{session_key}_gen_top", use_container_width=True, type="secondary"):
+                        generar_codigo_tecnico(correo_usuario)
+                        st.rerun()
+            with col_btn_out:
+                if st.button("Salir", key=f"{session_key}_logout_top", use_container_width=True, type="secondary"):
+                    st.session_state.user = None
+                    st.rerun()
 
+    # ==========================================
+    # ENTORNO MÓVIL (Menú Lateral)
+    # ==========================================
     with st.sidebar:
         if os.path.exists("tortuga.png"):
             st.image("tortuga.png", width=160)
@@ -503,9 +517,18 @@ def mostrar_navegacion(opciones, session_key, rol_label):
             <div class="profile-card">
                 <div class="profile-name">{st.session_state.user['nombre']}</div>
                 <div class="profile-role">{rol_label}</div>
+                {codigo_html_side}
             </div>
-            <div class="menu-title">MENÚ PRINCIPAL</div>
         """, unsafe_allow_html=True)
+        
+        # Controles en Móvil
+        if es_tecnico:
+            texto_btn_side = "Regenerar Código" if codigo_tecnico else "Generar Código"
+            if st.button(texto_btn_side, key=f"{session_key}_gen_side", use_container_width=True):
+                generar_codigo_tecnico(correo_usuario)
+                st.rerun()
+                
+        st.markdown('<div class="menu-title">MENÚ PRINCIPAL</div>', unsafe_allow_html=True)
 
         st.radio(
             "", opciones, key=f"{session_key}_side",
@@ -1021,8 +1044,6 @@ def vista_tecnico():
 
             texto_boton_codigo = "🔄 Regenerar código" if codigo_tecnico_actual else "✨ Generar mi código"
             
-            # CORRECCIÓN: Se removió st.rerun() dentro del botón para evitar
-            # que la app regresara inesperadamente a la pestaña de Inicio.
             if st.button(texto_boton_codigo, key="btn_generar_codigo_tecnico"):
                 nuevo_codigo = generar_codigo_tecnico(correo_tecnico_actual)
                 if nuevo_codigo:
