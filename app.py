@@ -354,38 +354,25 @@ def aplicar_estilos_navegacion():
                 border-radius: 14px;
                 box-shadow: 0px 4px 14px rgba(0, 0, 0, 0.25);
             }
-            .st-key-topnav_wrapper div[role="radiogroup"] {
-                flex-direction: row !important;
-                flex-wrap: wrap;
-                gap: 2px;
+            /* Botones de la barra superior: se aplanan para que parezcan
+               pestañas de navegación en vez de botones de formulario. El
+               activo usa el azul corporativo (button[kind="primary"],
+               definido en los estilos globales); los inactivos quedan
+               transparentes hasta que se pasa el mouse por encima. */
+            .st-key-topnav_wrapper button[kind="secondary"] {
+                background-color: transparent !important;
+                border: 1px solid transparent !important;
+                color: #d1d5db !important;
+                font-weight: 500 !important;
+                transition: background-color 0.2s ease, color 0.2s ease !important;
             }
-            /* Oculta el círculo/punto indicador del radio (solo en esta
-               barra superior; el menú lateral de móvil no se toca). El
-               <input> real se mantiene funcional, solo se hace invisible;
-               el primer div del label es el envoltorio del círculo, que
-               también se oculta por si el navegador dibuja ahí el punto
-               en vez de en el input nativo. */
-            .st-key-topnav_wrapper div[role="radiogroup"] input[type="radio"] {
-                display: none !important;
+            .st-key-topnav_wrapper button[kind="secondary"]:hover {
+                background-color: rgba(255, 255, 255, 0.08) !important;
+                color: #ffffff !important;
+                border-color: transparent !important;
             }
-            .st-key-topnav_wrapper div[role="radiogroup"] label > div:first-child {
-                display: none !important;
-            }
-            .st-key-topnav_wrapper div[role="radiogroup"] label {
-                padding: 8px 14px;
-                border-radius: 8px;
-                transition: background-color 0.2s ease;
-                cursor: pointer;
-            }
-            .st-key-topnav_wrapper div[role="radiogroup"] label:hover {
-                background-color: rgba(255, 255, 255, 0.07);
-            }
-            .st-key-topnav_wrapper div[role="radiogroup"] label:has(input:checked) {
-                background-color: rgba(59, 130, 246, 0.16);
-            }
-            .st-key-topnav_wrapper div[role="radiogroup"] label:has(input:checked) p {
-                color: #3b82f6 !important;
-                font-weight: 700 !important;
+            .st-key-topnav_wrapper button[kind="primary"] {
+                border-radius: 8px !important;
             }
             .topnav-user {
                 display: flex;
@@ -431,9 +418,6 @@ def mostrar_navegacion(opciones, session_key, rol_label):
     if session_key not in st.session_state:
         st.session_state[session_key] = opciones[0]
 
-    def _sync_top():
-        st.session_state[session_key] = st.session_state[f"{session_key}_top"]
-
     def _sync_side():
         st.session_state[session_key] = st.session_state[f"{session_key}_side"]
 
@@ -459,11 +443,20 @@ def mostrar_navegacion(opciones, session_key, rol_label):
             if os.path.exists("tortuga.png"):
                 st.image("tortuga.png", width=40)
         with col_menu:
-            st.radio(
-                "", opciones, key=f"{session_key}_top",
-                index=indice_actual, horizontal=True,
-                label_visibility="collapsed", on_change=_sync_top
-            )
+            # Botones en vez de st.radio: un botón no tiene círculo/punto
+            # indicador que ocultar, así que se evita por completo el
+            # problema de intentar tapar ese punto con CSS.
+            cols_botones = st.columns(len(opciones))
+            for idx, op in enumerate(opciones):
+                with cols_botones[idx]:
+                    es_activo = (op == st.session_state[session_key])
+                    if st.button(
+                        op, key=f"{session_key}_top_btn_{idx}",
+                        use_container_width=True,
+                        type="primary" if es_activo else "secondary"
+                    ):
+                        st.session_state[session_key] = op
+                        st.rerun()
         with col_user:
             st.markdown(f"""
                 <div class="topnav-user">
