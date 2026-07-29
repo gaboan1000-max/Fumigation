@@ -1,4 +1,4 @@
-import streamlit as st
+[cite: 1]import streamlit as st
 import sqlite3
 import hashlib
 import os
@@ -250,9 +250,6 @@ def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_pat
     conn.close()
 
 def obtener_reportes_cliente(nombre_cliente):
-    # Comparación EXACTA (insensible a mayúsculas) para no filtrar reportes
-    # de otros clientes cuyo nombre solo coincida parcialmente (ej. "Ana"
-    # dentro de "Sucursal Ana María").
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
@@ -295,10 +292,6 @@ def obtener_conversacion(user1, user2):
 # 3. ESTILOS, ANIMACIONES CSS Y BOTONES PROFESIONALES
 # =============================================================================
 def aplicar_estilos_globales():
-    """Estilos que aplican a TODA la app, incluida la pantalla de login,
-    para que el botón principal y las pestañas mantengan siempre el mismo
-    color corporativo (antes solo se aplicaban dentro del panel, y el login
-    se quedaba con el color rojo/naranja por defecto de Streamlit)."""
     st.markdown("""
         <style>
             @keyframes fadeInSlideUp {
@@ -309,8 +302,6 @@ def aplicar_estilos_globales():
                 animation: fadeInSlideUp 0.45s ease-out forwards;
                 padding-top: 2rem;
             }
-
-            /* --- BOTONES PRINCIPALES: ESTILO AZUL CORPORATIVO --- */
             button[kind="primary"] {
                 background-color: #1d4ed8 !important;
                 border: 1px solid #2563eb !important;
@@ -322,8 +313,6 @@ def aplicar_estilos_globales():
                 border-color: #3b82f6 !important;
                 transform: translateY(-1px);
             }
-
-            /* --- PESTAÑAS (TABS) --- */
             .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
                 color: #3b82f6 !important;
             }
@@ -336,14 +325,6 @@ def aplicar_estilos_globales():
 def aplicar_estilos_sidebar():
     st.markdown("""
         <style>
-            /* Antes esta animación usaba "transform: translateX(...)" sobre
-               el propio contenedor del sidebar. En móvil, Streamlit usa
-               justamente "transform" en ese mismo contenedor para abrirlo y
-               cerrarlo como cajón lateral; al animar transform ahí también,
-               las dos animaciones chocaban y el menú se quedaba "atorado"
-               a medio abrir, tapando el contenido (como en la captura).
-               Se cambia a una animación de solo opacidad, que no interfiere
-               con el mecanismo de apertura/cierre. */
             @keyframes sidebarFadeIn {
                 0% { opacity: 0; }
                 100% { opacity: 1; }
@@ -361,7 +342,6 @@ def aplicar_estilos_sidebar():
                 background-color: rgba(255, 255, 255, 0.08);
                 transform: translateX(5px);
             }
-
             .profile-card {
                 background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
                 padding: 16px;
@@ -414,13 +394,8 @@ def aplicar_estilos_sidebar():
     """, unsafe_allow_html=True)
 
 def aplicar_estilos_navegacion():
-    """Estilos de la barra de navegación superior (escritorio) y las reglas
-    responsive que deciden si se muestra esa barra o el menú lateral."""
     st.markdown("""
         <style>
-            /* Nota: st.container(key="topnav_wrapper") genera automáticamente
-               la clase .st-key-topnav_wrapper en su div contenedor; por eso
-               se usa ese selector en vez de una clase propia. */
             .st-key-topnav_wrapper {
                 display: flex;
                 align-items: center;
@@ -432,11 +407,6 @@ def aplicar_estilos_navegacion():
                 border-radius: 14px;
                 box-shadow: 0px 4px 14px rgba(0, 0, 0, 0.25);
             }
-            /* Botones de la barra superior: se aplanan para que parezcan
-               pestañas de navegación en vez de botones de formulario. El
-               activo usa el azul corporativo (button[kind="primary"],
-               definido en los estilos globales); los inactivos quedan
-               transparentes hasta que se pasa el mouse por encima. */
             .st-key-topnav_wrapper button[kind="secondary"] {
                 background-color: transparent !important;
                 border: 1px solid transparent !important;
@@ -471,15 +441,10 @@ def aplicar_estilos_navegacion():
                 text-transform: uppercase;
                 letter-spacing: 0.6px;
             }
-
-            /* Escritorio: se oculta el menú lateral nativo porque la
-               navegación se movió a la barra superior. */
             @media (min-width: 769px) {
                 [data-testid="stSidebar"] { display: none !important; }
                 [data-testid="stSidebarCollapsedControl"] { display: none !important; }
             }
-            /* Móvil: se oculta la barra superior y se conserva el menú
-               lateral (cajón) tal como estaba. */
             @media (max-width: 768px) {
                 .st-key-topnav_wrapper { display: none !important; }
             }
@@ -487,10 +452,6 @@ def aplicar_estilos_navegacion():
     """, unsafe_allow_html=True)
 
 def mostrar_navegacion(opciones, session_key, rol_label):
-    """Barra de navegación superior (escritorio) + menú lateral (móvil),
-    sincronizados mediante st.session_state para que ambos reflejen siempre
-    la misma sección activa aunque solo uno esté visible según el ancho de
-    pantalla. Devuelve la opción actualmente seleccionada."""
     aplicar_estilos_navegacion()
 
     if session_key not in st.session_state:
@@ -501,15 +462,6 @@ def mostrar_navegacion(opciones, session_key, rol_label):
 
     indice_actual = opciones.index(st.session_state[session_key])
 
-    # --- Barra superior (visible en escritorio) ---
-    # Se usa st.container(key=...) -- soporte nativo de Streamlit para
-    # aplicar una clase CSS estable a un contenedor -- en vez del truco de
-    # abrir/cerrar un <div> con st.markdown, que NO envuelve realmente los
-    # widgets (cada llamada a st.markdown genera su propio bloque aislado
-    # en el DOM). Si la versión de Streamlit instalada es anterior a la
-    # 1.32 (sin soporte para 'key' en st.container), se usa un contenedor
-    # normal como respaldo: se pierde la tarjeta con color de fondo, pero
-    # la navegación sigue funcionando igual.
     try:
         contenedor_nav_superior = st.container(key="topnav_wrapper")
     except TypeError:
@@ -521,9 +473,6 @@ def mostrar_navegacion(opciones, session_key, rol_label):
             if os.path.exists("tortuga.png"):
                 st.image("tortuga.png", width=40)
         with col_menu:
-            # Botones en vez de st.radio: un botón no tiene círculo/punto
-            # indicador que ocultar, así que se evita por completo el
-            # problema de intentar tapar ese punto con CSS.
             cols_botones = st.columns(len(opciones))
             for idx, op in enumerate(opciones):
                 with cols_botones[idx]:
@@ -546,7 +495,6 @@ def mostrar_navegacion(opciones, session_key, rol_label):
                 st.session_state.user = None
                 st.rerun()
 
-    # --- Menú lateral (visible en móvil, igual que antes) ---
     with st.sidebar:
         if os.path.exists("tortuga.png"):
             st.image("tortuga.png", width=160)
@@ -572,8 +520,6 @@ def mostrar_navegacion(opciones, session_key, rol_label):
 
     return st.session_state[session_key]
 
-# Los estilos globales (botones, pestañas, animación general) deben aplicar
-# siempre, estemos o no autenticados.
 aplicar_estilos_globales()
 
 def mostrar_modulo_chat():
@@ -646,7 +592,7 @@ def mostrar_catalogo_plagas_principal():
         with col_info:
             st.header("🪳 Cucaracha americana (*Periplaneta americana*)")
             st.markdown("""
-            La **cucaracha americana** (*Periplaneta americana*) es una de las especies de cucarachas más grandes y comunes en zonas urbanas. A pesar de su nombre, proviene de África y llegó al continente a través del comercio marítimo.
+            La **cucaracha americana** (*Periplaneta americana*) es una de las especies de cucarachas más grandes y comunes en zonas urbanas.
             """)
             st.info("""
             **Clasificación**  
@@ -732,7 +678,7 @@ def mostrar_catalogo_plagas_principal():
         with col_info:
             st.header("🪳 Cucaracha alemana (*Blattella germanica*)")
             st.markdown("""
-            La cucaracha alemana (*Blattella germanica*) es una de las especies de cucarachas más pequeñas y, al mismo tiempo, una de las plagas domésticas más importantes del mundo.
+            La cucaracha alemana (*Blattella germanica*) es una de las especies de cucarachas más pequeñas y una de las plagas domésticas más importantes.
             """)
             st.info("""
             **Clasificación**  
@@ -792,7 +738,7 @@ def mostrar_catalogo_plagas_principal():
         st.info("Estamos actualizando la enciclopedia técnica con nuevas especies. ¡Vuelve pronto!")
 
 # =============================================================================
-# 5. AUTENTICACIÓN MEJORADA (SPLIT-SCREEN CON LOGO AMPLIADO A 220px)
+# 5. AUTENTICACIÓN MEJORADA
 # =============================================================================
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -816,9 +762,6 @@ def mostrar_autenticacion():
             .spacer {
                 margin-top: 60px;
             }
-            /* Tarjeta que envuelve el formulario de acceso para que no
-               quede "flotando" sobre el fondo, igual que el resto de
-               tarjetas de la app (perfil, features, etc). */
             .auth-card-wrapper [data-testid="stForm"] {
                 background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
                 border: 1px solid #374151;
@@ -851,9 +794,7 @@ def mostrar_autenticacion():
 
     with col_brand:
         st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
-        
         if os.path.exists("tortuga.png"):
-            # Logo ampliado a 220px
             st.image("tortuga.png", width=220)
         
         st.markdown('<div class="brand-title">Gestión Profesional<br>de Fumigaciones</div>', unsafe_allow_html=True)
@@ -920,9 +861,7 @@ def mostrar_autenticacion():
                     nuevo_codigo_tecnico = st.text_input(
                         "Código del técnico (opcional)",
                         placeholder="Ej. AB12CD",
-                        help="Solo aplica si te registras como Cliente. Pídeselo a tu técnico: "
-                             "así quedas agregado automáticamente como su cliente, sin que él "
-                             "tenga que darte de alta a mano."
+                        help="Solo aplica si te registras como Cliente. Pídeselo a tu técnico."
                     )
                     
                     pass1 = st.text_input("Contraseña", type="password", placeholder="Crea una contraseña segura (mín. 6 caracteres)")
@@ -962,12 +901,6 @@ def mostrar_autenticacion():
 # 6. VISTAS PRINCIPALES (TÉCNICO Y CLIENTE)
 # =============================================================================
 def mostrar_ubicacion_real():
-    """Pide al navegador la ubicación real del dispositivo (GPS/Wi-Fi/IP)
-    mediante la API de geolocalización del navegador y la dibuja en un mapa
-    interactivo (Leaflet). Streamlit no tiene un componente nativo para esto,
-    por eso se inyecta HTML/JS. El navegador pedirá permiso de ubicación la
-    primera vez; si se rechaza o el dispositivo no lo soporta, se muestra un
-    mensaje claro en vez de fallar en silencio."""
     st.subheader("📍 Geolocalización y Control de Servicios")
     st.info("Tu navegador pedirá permiso para compartir tu ubicación. Acepta el permiso para verla en el mapa.")
 
@@ -1026,13 +959,6 @@ def mostrar_ubicacion_real():
     """
     components.html(html_geo, height=620, scrolling=False)
 
-    st.caption(
-        "Nota: la geolocalización requiere que el sitio se sirva por HTTPS "
-        "(o localhost). Si el navegador no muestra el diálogo de permiso, "
-        "revisa la configuración de privacidad del sitio."
-    )
-
-
 def vista_tecnico():
     aplicar_estilos_sidebar()
 
@@ -1072,8 +998,6 @@ def vista_tecnico():
             if submit_serv:
                 path_img = ""
                 if evidencia:
-                    # Se antepone fecha/hora al nombre del archivo para evitar que
-                    # dos evidencias con el mismo nombre se sobrescriban entre sí.
                     nombre_unico = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{evidencia.name}"
                     path_img = os.path.join("uploads", nombre_unico)
                     with open(path_img, "wb") as f:
@@ -1085,34 +1009,29 @@ def vista_tecnico():
     elif opcion == "👥 Gestión Clientes":
         st.subheader("👥 Gestión de Clientes y Locales")
 
-        # --- Código personal del técnico para autoregistro de clientes ---
-        # Nota: se actualiza la variable local "codigo_tecnico_actual" en la
-        # misma pasada del script en vez de usar st.rerun(). Antes se hacía
-        # rerun después de generar el código, y era en el único lugar de la
-        # app donde eso parecía llevar de vuelta a "Inicio"; quitarlo evita
-        # ese salto por completo y además se ve el código al instante, sin
-        # parpadeo de recarga.
         correo_tecnico_actual = st.session_state.user['correo']
         codigo_tecnico_actual = obtener_codigo_tecnico(correo_tecnico_actual)
+        
         with st.container():
             st.markdown("#### 🔑 Tu código para nuevos clientes")
             st.caption(
                 "Compártelo con tus clientes nuevos: al crear su cuenta como Cliente "
-                "pueden anexarlo (es opcional) y quedan agregados aquí automáticamente, "
-                "sin que tengas que registrarlos a mano."
+                "pueden anexarlo y quedan agregados aquí automáticamente."
             )
 
             texto_boton_codigo = "🔄 Regenerar código" if codigo_tecnico_actual else "✨ Generar mi código"
+            
+            # CORRECCIÓN: Se removió st.rerun() dentro del botón para evitar
+            # que la app regresara inesperadamente a la pestaña de Inicio.
             if st.button(texto_boton_codigo, key="btn_generar_codigo_tecnico"):
                 nuevo_codigo = generar_codigo_tecnico(correo_tecnico_actual)
                 if nuevo_codigo:
                     codigo_tecnico_actual = nuevo_codigo
-                    st.success(f"✅ Código generado: {nuevo_codigo}")
+                    st.success(f"✅ ¡Código generado con éxito: {nuevo_codigo}!")
                 else:
                     st.error(
                         "⚠️ No se pudo generar el código: no se encontró tu cuenta "
-                        "por correo. Intenta cerrar sesión y volver a entrar, y si "
-                        "sigue sin funcionar avísame."
+                        "por correo. Intenta cerrar sesión y volver a entrar."
                     )
 
             if codigo_tecnico_actual:
