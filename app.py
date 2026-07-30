@@ -456,8 +456,8 @@ def mostrar_navegacion(opciones, session_key, rol_label):
             codigo_html_top = f'<div style="color:#3b82f6; font-size: 0.85rem; font-weight: 700; margin-top: 4px;">Código: {codigo_tecnico}</div>'
             codigo_html_side = f'<div style="color:#3b82f6; font-size: 0.95rem; font-weight: 700; margin-top: 8px;">Código: {codigo_tecnico}</div>'
         else:
-            codigo_html_top = f'<div style="color:#f87171; font-size: 0.85rem; font-weight: 700; margin-top: 4px;">Sin código</div>'
-            codigo_html_side = f'<div style="color:#f87171; font-size: 0.95rem; font-weight: 700; margin-top: 8px;">Sin código</div>'
+            codigo_html_top = '<div style="color:#f87171; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">Sin código (Gestión Clientes)</div>'
+            codigo_html_side = '<div style="color:#f87171; font-size: 0.85rem; font-weight: 600; margin-top: 8px;">Sin código (genéralo en Gestión Clientes)</div>'
 
     try:
         contenedor_nav_superior = st.container(key="topnav_wrapper")
@@ -492,19 +492,15 @@ def mostrar_navegacion(opciones, session_key, rol_label):
                     {codigo_html_top}
                 </div>
             """, unsafe_allow_html=True)
-            
-            # Controles en PC
-            col_btn_gen, col_btn_out = st.columns(2)
-            with col_btn_gen:
-                if es_tecnico:
-                    texto_btn = "Regenerar" if codigo_tecnico else "Generar Código"
-                    if st.button(texto_btn, key=f"{session_key}_gen_top", use_container_width=True, type="secondary"):
-                        generar_codigo_tecnico(correo_usuario)
-                        st.rerun()
-            with col_btn_out:
-                if st.button("Salir", key=f"{session_key}_logout_top", use_container_width=True, type="secondary"):
-                    st.session_state.user = None
-                    st.rerun()
+
+            # El botón para generar/regenerar el código vive únicamente en
+            # "Gestión Clientes" (ahí se actualiza al instante, sin recargar
+            # la página). Aquí solo se MUESTRA el código como referencia
+            # rápida -- tener un segundo botón que hace lo mismo con una
+            # recarga completa era justo lo que causaba el salto en PC.
+            if st.button("Salir", key=f"{session_key}_logout_top", use_container_width=True, type="secondary"):
+                st.session_state.user = None
+                st.rerun()
 
     # ==========================================
     # ENTORNO MÓVIL (Menú Lateral)
@@ -521,13 +517,6 @@ def mostrar_navegacion(opciones, session_key, rol_label):
             </div>
         """, unsafe_allow_html=True)
         
-        # Controles en Móvil
-        if es_tecnico:
-            texto_btn_side = "Regenerar Código" if codigo_tecnico else "Generar Código"
-            if st.button(texto_btn_side, key=f"{session_key}_gen_side", use_container_width=True):
-                generar_codigo_tecnico(correo_usuario)
-                st.rerun()
-                
         st.markdown('<div class="menu-title">MENÚ PRINCIPAL</div>', unsafe_allow_html=True)
 
         st.radio(
