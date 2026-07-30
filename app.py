@@ -1057,17 +1057,32 @@ def vista_tecnico():
                 responsable = st.text_input("Persona Responsable")
                 tel_local = st.text_input("Teléfono de Contacto")
                 dir_local = st.text_input("Dirección Completa")
+                codigo_tecnico_manual = st.text_input(
+                    "Código del técnico (opcional)",
+                    placeholder="Ej. AB12CD",
+                    help="Solo si quieres asociar rápido este cliente a un técnico "
+                         "en particular usando su código, en vez de dejarlo sin asignar."
+                )
                 
                 btn_cli = st.form_submit_button("Guardar Cliente", type="primary")
                 if btn_cli:
-                    if nombre_local.strip():
-                        if agregar_cliente_db(nombre_local, responsable, tel_local, dir_local):
+                    if not nombre_local.strip():
+                        st.warning("El nombre del local es obligatorio.")
+                    else:
+                        codigo_manual_limpio = codigo_tecnico_manual.strip()
+                        tecnico_para_asignar = None
+                        codigo_invalido = False
+                        if codigo_manual_limpio:
+                            tecnico_para_asignar = obtener_tecnico_por_codigo(codigo_manual_limpio)
+                            codigo_invalido = tecnico_para_asignar is None
+
+                        if codigo_invalido:
+                            st.error("⚠️ El código de técnico no es válido. Verifícalo o deja el campo vacío.")
+                        elif agregar_cliente_db(nombre_local, responsable, tel_local, dir_local, tecnico_para_asignar):
                             st.success("✅ Cliente registrado con éxito.")
                             st.rerun()
                         else:
                             st.error("⚠️ El nombre del local ya existe.")
-                    else:
-                        st.warning("El nombre del local es obligatorio.")
         
         st.markdown("### Listado de Clientes Registrados")
         clientes_detalle = obtener_todos_clientes_detalle()
