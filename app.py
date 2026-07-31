@@ -154,6 +154,10 @@ def init_db():
         c.execute("ALTER TABLE reportes ADD COLUMN nivel_infestacion TEXT DEFAULT 'Media'")
     except sqlite3.OperationalError:
         pass
+    try:
+        c.execute("ALTER TABLE reportes ADD COLUMN cantidad_observada INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS mensajes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -301,13 +305,30 @@ def obtener_contactos_disponibles(mi_nombre):
     conn.close()
     return contactos
 
-def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion="Media"):
+RANGOS_INFESTACION = [
+    ("Baja", 1, 10, "🟢", "Se observan pocos individuos o evidencia mínima de actividad. No representa una infestación generalizada."),
+    ("Media", 11, 50, "🟡", "Presencia frecuente de la plaga en una o varias áreas. Requiere tratamiento correctivo."),
+    ("Alta", 51, None, "🔴", "Presencia numerosa y generalizada de la plaga. Requiere intervención inmediata."),
+]
+
+def clasificar_nivel_infestacion(cantidad):
+    """Clasifica la cantidad observada en Baja (1-10), Media (11-50) o Alta (más de 50)."""
+    if cantidad <= 0:
+        return "Baja"
+    if cantidad <= 10:
+        return "Baja"
+    elif cantidad <= 50:
+        return "Media"
+    else:
+        return "Alta"
+
+def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion="Media", cantidad_observada=0):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute('''
-        INSERT INTO reportes(cliente_nombre, tecnico_nombre, tipo_plaga, tratamiento, estatus, evidencia_path, nivel_infestacion)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion))
+        INSERT INTO reportes(cliente_nombre, tecnico_nombre, tipo_plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada))
     conn.commit()
     conn.close()
 
@@ -1031,6 +1052,11 @@ def mostrar_grafica_infestacion():
     st.subheader("📈 Nivel de Infestación Mensual")
     st.caption("Cantidad de servicios registrados por nivel de infestación (Baja, Media, Alta) a lo largo del año.")
 
+    with st.expander("ℹ️ ¿Cómo se clasifica el nivel de infestación?"):
+        for nivel, minimo, maximo, icono, descripcion in RANGOS_INFESTACION:
+            rango_texto = f"{minimo} a {maximo}" if maximo else f"Más de {minimo - 1}"
+            st.markdown(f"**{icono} {nivel}** ({rango_texto}): {descripcion}")
+
     anios_disponibles = obtener_anios_disponibles()
     anio_actual = str(datetime.now().year)
     if anio_actual not in anios_disponibles:
@@ -1327,6 +1353,11 @@ def vista_tecnico():
     elif opcion == "➕ Registrar Servicio":
         st.subheader("📝 Registrar Servicio de Fumigación")
         lista_clientes = obtener_lista_clientes()
+
+        with st.expander("ℹ️ ¿Cómo se clasifica el nivel de infestación?"):
+            for nivel, minimo, maximo, icono, descripcion in RANGOS_INFESTACION:
+                rango_texto = f"{minimo} a {maximo}" if maximo else f"Más de {minimo - 1}"
+                st.markdown(f"**{icono} {nivel}** ({rango_texto}): {descripcion}")
         
         with st.form("registro_fumigacion", clear_on_submit=True):
             col1, col2 = st.columns(2)
@@ -1334,7 +1365,11 @@ def vista_tecnico():
                 cliente = st.selectbox("Cliente / Local", options=lista_clientes if lista_clientes else ["Sin clientes"])
                 plaga = st.text_input("Tipo de Plaga", placeholder="Ej. Cucaracha alemana, Roedores")
                 tratamiento = st.text_area("Tratamiento Aplicado / Productos", placeholder="Ej. Aplicación de gel específico y aspersión perimetral.")
-                nivel_infestacion = st.selectbox("Nivel de Infestación", ["Baja", "Media", "Alta"], index=1)
+                cantidad_observada = st.number_input(
+                    "Cantidad de Plagas Observadas",
+                    min_value=0, step=1, value=0,
+                    help="1 a 10 = Baja · 11 a 50 = Media · Más de 50 = Alta"
+                )
             with col2:
                 estatus = st.selectbox("Estatus del Servicio", ["Completado", "En Proceso", "Seguimiento Requerido"])
                 tecnico = st.text_input("Técnico Responsable", value=st.session_state.user['nombre'])
@@ -1350,8 +1385,9 @@ def vista_tecnico():
                     with open(path_img, "wb") as f:
                         f.write(evidencia.getbuffer())
                 
-                guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, path_img, nivel_infestacion)
-                st.success("✅ Servicio registrado correctamente en el sistema.")
+                nivel_calculado = clasificar_nivel_infestacion(int(cantidad_observada))
+                guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, path_img, nivel_calculado, int(cantidad_observada))
+                st.success(f"✅ Servicio registrado correctamente. Nivel de infestación asignado: **{nivel_calculado}** ({int(cantidad_observada)} plagas observadas).")
 
     elif opcion == "👥 Gestión Clientes":
         st.subheader("👥 Gestión de Clientes y Locales")
@@ -1416,7 +1452,7 @@ def vista_tecnico():
         st.subheader("📊 Historial General de Reportes")
         reportes = obtener_todos_reportes()
         if reportes:
-            df_rep = pd.DataFrame(reportes, columns=["ID", "Cliente", "Técnico", "Plaga", "Tratamiento", "Estatus", "Fecha", "Evidencia", "Nivel Infestación"])
+            df_rep = pd.DataFrame(reportes, columns=["ID", "Cliente", "Técnico", "Plaga", "Tratamiento", "Estatus", "Fecha", "Evidencia", "Nivel Infestación", "Cantidad Observada"])
             st.dataframe(df_rep, use_container_width=True)
         else:
             st.info("No hay servicios registrados en el historial.")
