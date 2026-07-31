@@ -150,6 +150,10 @@ def init_db():
             evidencia_path TEXT
         )
     ''')
+    try:
+        c.execute("ALTER TABLE reportes ADD COLUMN nivel_infestacion TEXT DEFAULT 'Media'")
+    except sqlite3.OperationalError:
+        pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS mensajes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -297,13 +301,13 @@ def obtener_contactos_disponibles(mi_nombre):
     conn.close()
     return contactos
 
-def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path):
+def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion="Media"):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute('''
-        INSERT INTO reportes(cliente_nombre, tecnico_nombre, tipo_plaga, tratamiento, estatus, evidencia_path)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (cliente, tecnico, plaga, tratamiento, estatus, evidencia_path))
+        INSERT INTO reportes(cliente_nombre, tecnico_nombre, tipo_plaga, tratamiento, estatus, evidencia_path, nivel_infestacion)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion))
     conn.commit()
     conn.close()
 
@@ -325,6 +329,28 @@ def obtener_todos_reportes():
     datos = c.fetchall()
     conn.close()
     return datos
+
+def obtener_infestacion_por_mes(anio):
+    """Devuelve el conteo de reportes por mes y nivel de infestación (Baja/Media/Alta) para el año indicado."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('''
+        SELECT strftime('%m', fecha) AS mes, nivel_infestacion, COUNT(*) 
+        FROM reportes
+        WHERE strftime('%Y', fecha) = ?
+        GROUP BY mes, nivel_infestacion
+    ''', (str(anio),))
+    datos = c.fetchall()
+    conn.close()
+    return datos
+
+def obtener_anios_disponibles():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT DISTINCT strftime('%Y', fecha) FROM reportes ORDER BY 1 DESC")
+    anios = [row[0] for row in c.fetchall() if row[0]]
+    conn.close()
+    return anios
 
 def enviar_mensaje_db(remitente, destinatario, texto):
     conn = sqlite3.connect(DB_NAME)
@@ -992,6 +1018,61 @@ def mostrar_catalogo_quimicos_principal():
         st.info("Estamos actualizando el catálogo con nuevos productos químicos. ¡Vuelve pronto!")
 
 # =============================================================================
+# 4C. GRÁFICA DE NIVEL DE INFESTACIÓN MENSUAL (SOLO TÉCNICOS)
+# =============================================================================
+MESES_ORDEN = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+MESES_NOMBRE = {
+    "01": "Ene", "02": "Feb", "03": "Mar", "04": "Abr", "05": "May", "06": "Jun",
+    "07": "Jul", "08": "Ago", "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dic"
+}
+NIVELES_ORDEN = ["Baja", "Media", "Alta"]
+
+def mostrar_grafica_infestacion():
+    st.subheader("📈 Nivel de Infestación Mensual")
+    st.caption("Cantidad de servicios registrados por nivel de infestación (Baja, Media, Alta) a lo largo del año.")
+
+    anios_disponibles = obtener_anios_disponibles()
+    anio_actual = str(datetime.now().year)
+    if anio_actual not in anios_disponibles:
+        anios_disponibles = [anio_actual] + anios_disponibles
+
+    anio_sel = st.selectbox("Año a consultar", anios_disponibles, index=0)
+
+    datos = obtener_infestacion_por_mes(anio_sel)
+
+    # Construir matriz mes x nivel, inicializada en 0
+    tabla = {mes: {nivel: 0 for nivel in NIVELES_ORDEN} for mes in MESES_ORDEN}
+    for mes, nivel, cantidad in datos:
+        if mes in tabla and nivel in NIVELES_ORDEN:
+            tabla[mes][nivel] = cantidad
+
+    df_infestacion = pd.DataFrame(
+        [[MESES_NOMBRE[mes]] + [tabla[mes][nivel] for nivel in NIVELES_ORDEN] for mes in MESES_ORDEN],
+        columns=["Mes"] + NIVELES_ORDEN
+    ).set_index("Mes")
+
+    total_servicios = int(df_infestacion.values.sum())
+
+    if total_servicios == 0:
+        st.info(f"Todavía no hay servicios registrados en {anio_sel} para generar la gráfica.")
+        return
+
+    col_a, col_m, col_b = st.columns(3)
+    col_a.metric("🟢 Total Baja", int(df_infestacion["Baja"].sum()))
+    col_m.metric("🟡 Total Media", int(df_infestacion["Media"].sum()))
+    col_b.metric("🔴 Total Alta", int(df_infestacion["Alta"].sum()))
+
+    st.markdown("---")
+    st.bar_chart(
+        df_infestacion,
+        color=["#22c55e", "#eab308", "#ef4444"],
+        use_container_width=True
+    )
+
+    with st.expander("📋 Ver tabla de datos"):
+        st.dataframe(df_infestacion, use_container_width=True)
+
+# =============================================================================
 # 5. AUTENTICACIÓN MEJORADA
 # =============================================================================
 if "user" not in st.session_state:
@@ -1226,6 +1307,7 @@ def vista_tecnico():
             "➕ Registrar Servicio",
             "👥 Gestión Clientes",
             "📊 Historial & Reportes",
+            "📈 Infestación Mensual",
             "📍 Ubicación Real",
             "💬 Mensajería"
         ],
@@ -1239,6 +1321,9 @@ def vista_tecnico():
     elif opcion == "🧪 Productos Químicos":
         mostrar_catalogo_quimicos_principal()
 
+    elif opcion == "📈 Infestación Mensual":
+        mostrar_grafica_infestacion()
+
     elif opcion == "➕ Registrar Servicio":
         st.subheader("📝 Registrar Servicio de Fumigación")
         lista_clientes = obtener_lista_clientes()
@@ -1249,6 +1334,7 @@ def vista_tecnico():
                 cliente = st.selectbox("Cliente / Local", options=lista_clientes if lista_clientes else ["Sin clientes"])
                 plaga = st.text_input("Tipo de Plaga", placeholder="Ej. Cucaracha alemana, Roedores")
                 tratamiento = st.text_area("Tratamiento Aplicado / Productos", placeholder="Ej. Aplicación de gel específico y aspersión perimetral.")
+                nivel_infestacion = st.selectbox("Nivel de Infestación", ["Baja", "Media", "Alta"], index=1)
             with col2:
                 estatus = st.selectbox("Estatus del Servicio", ["Completado", "En Proceso", "Seguimiento Requerido"])
                 tecnico = st.text_input("Técnico Responsable", value=st.session_state.user['nombre'])
@@ -1264,7 +1350,7 @@ def vista_tecnico():
                     with open(path_img, "wb") as f:
                         f.write(evidencia.getbuffer())
                 
-                guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, path_img)
+                guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, path_img, nivel_infestacion)
                 st.success("✅ Servicio registrado correctamente en el sistema.")
 
     elif opcion == "👥 Gestión Clientes":
@@ -1330,7 +1416,7 @@ def vista_tecnico():
         st.subheader("📊 Historial General de Reportes")
         reportes = obtener_todos_reportes()
         if reportes:
-            df_rep = pd.DataFrame(reportes, columns=["ID", "Cliente", "Técnico", "Plaga", "Tratamiento", "Estatus", "Fecha", "Evidencia"])
+            df_rep = pd.DataFrame(reportes, columns=["ID", "Cliente", "Técnico", "Plaga", "Tratamiento", "Estatus", "Fecha", "Evidencia", "Nivel Infestación"])
             st.dataframe(df_rep, use_container_width=True)
         else:
             st.info("No hay servicios registrados en el historial.")
@@ -1368,7 +1454,7 @@ def vista_cliente():
         
         if reportes:
             for rep in reportes:
-                _, cliente, tecnico, plaga, tratamiento, estatus, fecha, evidencia = rep
+                _, cliente, tecnico, plaga, tratamiento, estatus, fecha, evidencia, *_resto = rep
                 with st.expander(f"Servicio: {plaga} - Fecha: {fecha} [{estatus}]"):
                     st.write(f"**Técnico Asignado:** {tecnico}")
                     st.write(f"**Tratamiento:** {tratamiento}")
