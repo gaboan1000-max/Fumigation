@@ -21,6 +21,73 @@ st.set_page_config(
 
 DB_NAME = "fumigaciones.db"
 
+# =============================================================================
+# TÉRMINOS Y CONDICIONES DE USO
+# =============================================================================
+TERMINOS_Y_CONDICIONES = """
+**Última actualización:** 30 de julio de 2026
+
+Bienvenido a la plataforma de gestión de fumigaciones de **Los Ángeles Corporativo**. Al acceder, registrarse o utilizar este sitio web y sus servicios, el usuario acepta cumplir los presentes Términos y Condiciones. Si no está de acuerdo con alguno de ellos, deberá abstenerse de utilizar la plataforma.
+
+### 1. Objeto
+La plataforma tiene como finalidad facilitar la administración de servicios de control de plagas mediante el registro de clientes, captura de inspecciones, generación de reportes, almacenamiento de evidencias fotográficas, consulta de historial de servicios y demás funciones relacionadas con la operación de fumigaciones.
+
+### 2. Uso de la Plataforma
+El usuario se compromete a utilizar la plataforma de manera responsable, ética y conforme a la legislación aplicable.
+
+Queda prohibido:
+- Utilizar información falsa o suplantar la identidad de otra persona.
+- Intentar acceder sin autorización a cuentas, bases de datos o áreas restringidas.
+- Alterar, modificar o eliminar información perteneciente a otros usuarios.
+- Introducir virus, software malicioso o cualquier elemento que pueda afectar el funcionamiento del sistema.
+- Utilizar la plataforma para fines distintos a la administración de servicios de control de plagas.
+
+### 3. Registro de Usuarios
+Algunas funciones requieren la creación de una cuenta. El usuario es responsable de:
+- Mantener la confidencialidad de su contraseña.
+- Proporcionar información veraz y actualizada.
+- Notificar cualquier uso no autorizado de su cuenta.
+- Todas las actividades realizadas desde una cuenta serán responsabilidad de su titular.
+
+### 4. Información Registrada
+Los datos capturados en la plataforma, incluyendo clientes, direcciones, reportes técnicos, fotografías, evidencias, certificados y documentos, deberán ser verídicos y obtenidos con autorización del cliente cuando así lo exija la legislación aplicable. El usuario garantiza que posee los permisos necesarios para registrar dicha información.
+
+### 5. Propiedad Intelectual
+Todo el contenido de la plataforma (diseño, logotipos, base de datos, código fuente, documentación, reportes generados, interfaces y elementos gráficos) es propiedad de **Los Ángeles Corporativo** o cuenta con las autorizaciones correspondientes, encontrándose protegido por la legislación aplicable en materia de propiedad intelectual. Queda prohibida su reproducción, distribución o modificación sin autorización previa y por escrito.
+
+### 6. Disponibilidad del Servicio
+Se realizarán esfuerzos razonables para mantener la plataforma disponible de manera continua. No obstante, podrán existir interrupciones ocasionadas por mantenimiento programado, actualizaciones del sistema, fallas técnicas, problemas de conexión a Internet o eventos fuera del control del administrador.
+
+### 7. Protección de Datos
+La información proporcionada por los usuarios será utilizada únicamente para la administración de los servicios ofrecidos, la generación de reportes y el cumplimiento de obligaciones legales y administrativas. Los datos serán tratados conforme al Aviso de Privacidad vigente y no serán divulgados a terceros sin autorización, salvo cuando exista obligación legal.
+
+### 8. Responsabilidad
+La plataforma constituye una herramienta de apoyo para la administración de servicios de control de plagas. Los Ángeles Corporativo no será responsable por:
+- Errores derivados de información incorrecta proporcionada por los usuarios.
+- Decisiones tomadas con base en datos incompletos.
+- Pérdida de información ocasionada por el uso indebido de las cuentas.
+- Daños ocasionados por fallas de Internet o de servicios externos.
+
+### 9. Suspensión o Cancelación de Cuentas
+La administración podrá suspender o cancelar, temporal o definitivamente, cualquier cuenta que incumpla estos términos, realice actividades fraudulentas, comprometa la seguridad del sistema o utilice la plataforma con fines ilícitos.
+
+### 10. Modificaciones
+Los presentes Términos y Condiciones podrán modificarse en cualquier momento para mejorar el servicio o cumplir nuevas disposiciones legales. Las modificaciones surtirán efecto desde su publicación en la plataforma.
+
+### 11. Legislación Aplicable
+Estos Términos y Condiciones se regirán por las leyes vigentes de los Estados Unidos Mexicanos. Cualquier controversia relacionada con la interpretación o cumplimiento de estos términos será sometida a los tribunales competentes del Estado de Tabasco, salvo disposición legal en contrario.
+
+### 12. Contacto
+Para cualquier duda relacionada con estos Términos y Condiciones, el usuario podrá comunicarse con **Los Ángeles Corporativo** mediante los medios de contacto publicados dentro de la plataforma.
+
+---
+Al utilizar esta plataforma, el usuario declara haber leído, comprendido y aceptado íntegramente los presentes Términos y Condiciones de Uso.
+"""
+
+def mostrar_terminos_condiciones():
+    with st.expander("📄 Términos y Condiciones de Uso"):
+        st.markdown(TERMINOS_Y_CONDICIONES)
+
 # Alfabeto sin 0/O/1/I/L para evitar confusiones al dictar o leer el código.
 _CODIGO_ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
@@ -456,8 +523,8 @@ def mostrar_navegacion(opciones, session_key, rol_label):
             codigo_html_top = f'<div style="color:#3b82f6; font-size: 0.85rem; font-weight: 700; margin-top: 4px;">Código: {codigo_tecnico}</div>'
             codigo_html_side = f'<div style="color:#3b82f6; font-size: 0.95rem; font-weight: 700; margin-top: 8px;">Código: {codigo_tecnico}</div>'
         else:
-            codigo_html_top = '<div style="color:#f87171; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">Sin código (Gestión Clientes)</div>'
-            codigo_html_side = '<div style="color:#f87171; font-size: 0.85rem; font-weight: 600; margin-top: 8px;">Sin código (genéralo en Gestión Clientes)</div>'
+            codigo_html_top = f'<div style="color:#f87171; font-size: 0.85rem; font-weight: 700; margin-top: 4px;">Sin código</div>'
+            codigo_html_side = f'<div style="color:#f87171; font-size: 0.95rem; font-weight: 700; margin-top: 8px;">Sin código</div>'
 
     try:
         contenedor_nav_superior = st.container(key="topnav_wrapper")
@@ -492,15 +559,19 @@ def mostrar_navegacion(opciones, session_key, rol_label):
                     {codigo_html_top}
                 </div>
             """, unsafe_allow_html=True)
-
-            # El botón para generar/regenerar el código vive únicamente en
-            # "Gestión Clientes" (ahí se actualiza al instante, sin recargar
-            # la página). Aquí solo se MUESTRA el código como referencia
-            # rápida -- tener un segundo botón que hace lo mismo con una
-            # recarga completa era justo lo que causaba el salto en PC.
-            if st.button("Salir", key=f"{session_key}_logout_top", use_container_width=True, type="secondary"):
-                st.session_state.user = None
-                st.rerun()
+            
+            # Controles en PC
+            col_btn_gen, col_btn_out = st.columns(2)
+            with col_btn_gen:
+                if es_tecnico:
+                    texto_btn = "Regenerar" if codigo_tecnico else "Generar Código"
+                    if st.button(texto_btn, key=f"{session_key}_gen_top", use_container_width=True, type="secondary"):
+                        generar_codigo_tecnico(correo_usuario)
+                        st.rerun()
+            with col_btn_out:
+                if st.button("Salir", key=f"{session_key}_logout_top", use_container_width=True, type="secondary"):
+                    st.session_state.user = None
+                    st.rerun()
 
     # ==========================================
     # ENTORNO MÓVIL (Menú Lateral)
@@ -517,6 +588,13 @@ def mostrar_navegacion(opciones, session_key, rol_label):
             </div>
         """, unsafe_allow_html=True)
         
+        # Controles en Móvil
+        if es_tecnico:
+            texto_btn_side = "Regenerar Código" if codigo_tecnico else "Generar Código"
+            if st.button(texto_btn_side, key=f"{session_key}_gen_side", use_container_width=True):
+                generar_codigo_tecnico(correo_usuario)
+                st.rerun()
+                
         st.markdown('<div class="menu-title">MENÚ PRINCIPAL</div>', unsafe_allow_html=True)
 
         st.radio(
@@ -809,7 +887,7 @@ def mostrar_autenticacion():
         if os.path.exists("tortuga.png"):
             st.image("tortuga.png", width=220)
         
-        st.markdown('<div class="brand-title">Gestión <br>de Fumigaciones Corporativo Los Angeles</div>', unsafe_allow_html=True)
+        st.markdown('<div class="brand-title">Gestión Profesional<br>de Fumigaciones</div>', unsafe_allow_html=True)
         st.markdown('<div class="brand-subtitle">Plataforma integral para el control de plagas, gestión de clientes y seguimiento en tiempo real.</div>', unsafe_allow_html=True)
         
         st.markdown("""
@@ -908,6 +986,9 @@ def mostrar_autenticacion():
                                 st.error("❌ El correo ingresado ya se encuentra registrado.")
         
         st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    mostrar_terminos_condiciones()
 
 # =============================================================================
 # 6. VISTAS PRINCIPALES (TÉCNICO Y CLIENTE)
@@ -1057,32 +1138,17 @@ def vista_tecnico():
                 responsable = st.text_input("Persona Responsable")
                 tel_local = st.text_input("Teléfono de Contacto")
                 dir_local = st.text_input("Dirección Completa")
-                codigo_tecnico_manual = st.text_input(
-                    "Código del técnico (opcional)",
-                    placeholder="Ej. AB12CD",
-                    help="Solo si quieres asociar rápido este cliente a un técnico "
-                         "en particular usando su código, en vez de dejarlo sin asignar."
-                )
                 
                 btn_cli = st.form_submit_button("Guardar Cliente", type="primary")
                 if btn_cli:
-                    if not nombre_local.strip():
-                        st.warning("El nombre del local es obligatorio.")
-                    else:
-                        codigo_manual_limpio = codigo_tecnico_manual.strip()
-                        tecnico_para_asignar = None
-                        codigo_invalido = False
-                        if codigo_manual_limpio:
-                            tecnico_para_asignar = obtener_tecnico_por_codigo(codigo_manual_limpio)
-                            codigo_invalido = tecnico_para_asignar is None
-
-                        if codigo_invalido:
-                            st.error("⚠️ El código de técnico no es válido. Verifícalo o deja el campo vacío.")
-                        elif agregar_cliente_db(nombre_local, responsable, tel_local, dir_local, tecnico_para_asignar):
+                    if nombre_local.strip():
+                        if agregar_cliente_db(nombre_local, responsable, tel_local, dir_local):
                             st.success("✅ Cliente registrado con éxito.")
                             st.rerun()
                         else:
                             st.error("⚠️ El nombre del local ya existe.")
+                    else:
+                        st.warning("El nombre del local es obligatorio.")
         
         st.markdown("### Listado de Clientes Registrados")
         clientes_detalle = obtener_todos_clientes_detalle()
