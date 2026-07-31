@@ -88,6 +88,16 @@ def mostrar_terminos_condiciones():
     with st.expander("📄 Términos y Condiciones de Uso"):
         st.markdown(TERMINOS_Y_CONDICIONES)
 
+        if "terminos_aceptados" not in st.session_state:
+            st.session_state.terminos_aceptados = False
+
+        if st.session_state.terminos_aceptados:
+            st.success("✅ Has aceptado los Términos y Condiciones de Uso.")
+        else:
+            if st.button("Sí, acepto", key="btn_aceptar_terminos", type="primary", use_container_width=True):
+                st.session_state.terminos_aceptados = True
+                st.rerun()
+
 # Alfabeto sin 0/O/1/I/L para evitar confusiones al dictar o leer el código.
 _CODIGO_ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
@@ -828,6 +838,160 @@ def mostrar_catalogo_plagas_principal():
         st.info("Estamos actualizando la enciclopedia técnica con nuevas especies. ¡Vuelve pronto!")
 
 # =============================================================================
+# 4B. CATÁLOGO DE PRODUCTOS QUÍMICOS
+# =============================================================================
+def mostrar_catalogo_quimicos_principal():
+    st.title("🧪 Catálogo de Productos Químicos")
+    st.caption("Fichas técnicas de los productos utilizados en los servicios de control de plagas.")
+
+    producto_seleccionado = st.selectbox(
+        "🔍 Selecciona un producto para ver su ficha técnica:",
+        [
+            "Demand® 2.5 CS (Syngenta)",
+            "Próximamente más productos..."
+        ]
+    )
+
+    if producto_seleccionado == "Demand® 2.5 CS (Syngenta)":
+        st.markdown("---")
+        col_img, col_info = st.columns([1, 1])
+
+        with col_img:
+            if os.path.exists("demand_25cs.jpg"):
+                st.image("demand_25cs.jpg", caption="Demand® 2.5 CS - Syngenta", use_container_width=True)
+            else:
+                st.info("💡 Guarda la imagen 'demand_25cs.jpg' en la carpeta raíz.")
+                uploaded_img = st.file_uploader("O sube la imagen del producto aquí:", type=["jpg", "png", "jpeg"], key="info_demand25cs")
+                if uploaded_img:
+                    with open("demand_25cs.jpg", "wb") as f:
+                        f.write(uploaded_img.getbuffer())
+                    st.rerun()
+
+        with col_info:
+            st.header("🧪 Demand® 2.5 CS (*Syngenta*)")
+            st.markdown("""
+            **Demand® 2.5 CS** es un insecticida profesional para el control de plagas urbanas. Está formulado con **Lambda-cihalotrina al 2.5%** en una suspensión encapsulada (CS) con tecnología **iCAP®**, la cual libera el ingrediente activo de forma gradual para proporcionar un control residual prolongado.
+            """)
+            st.info("""
+            **Información General**  
+            • **Nombre comercial:** Demand® 2.5 CS  
+            • **Fabricante:** Syngenta  
+            • **Ingrediente activo:** Lambda-cihalotrina 2.5% (25 g/L)  
+            • **Familia química:** Piretroides tipo II  
+            • **Formulación:** Suspensión encapsulada (CS)  
+            • **Grupo IRAC:** 3A
+            """)
+
+        st.markdown("---")
+
+        tab_accion, tab_plagas, tab_lugares, tab_ventajas, tab_dosis, tab_epp, tab_precauciones, tab_residual = st.tabs([
+            "⚙️ Modo de Acción", "🐜 Plagas que Controla", "🏢 Lugares de Aplicación",
+            "✅ Ventajas", "💧 Dosis", "🦺 EPP", "⚠️ Precauciones", "⏳ Tiempo Residual"
+        ])
+
+        with tab_accion:
+            st.subheader("Modo de Acción")
+            st.markdown("""
+            La lambda-cihalotrina actúa por **contacto e ingestión**, alterando los canales de sodio del sistema nervioso de los insectos. Esto provoca:
+
+            * Hiperactividad inicial.
+            * Parálisis.
+            * Muerte del insecto.
+
+            Gracias a la microencapsulación, el ingrediente activo permanece protegido y se libera lentamente, aumentando el tiempo de control residual.
+            """)
+
+        with tab_plagas:
+            st.subheader("Plagas que Controla")
+            st.markdown("""
+            Está registrado para controlar numerosas plagas urbanas, entre ellas:
+
+            * Cucarachas
+            * Hormigas
+            * Moscas
+            * Mosquitos
+            * Pulgas
+            * Arañas
+            * Alacranes
+            * Avispas
+            * Escarabajos
+            * Grillos
+            * Ciempiés
+            * Milpiés
+            * Pescadito de plata
+            * Cochinillas
+            * Jejenes
+            * Palomillas
+            """)
+
+        with tab_lugares:
+            st.subheader("Lugares de Aplicación")
+            st.markdown("""
+            Puede utilizarse en:
+
+            * Viviendas.
+            * Restaurantes.
+            * Hoteles.
+            * Hospitales.
+            * Escuelas.
+            * Oficinas.
+            * Bodegas.
+            * Industrias alimentarias.
+            * Áreas perimetrales.
+            * Interiores y exteriores.
+            """)
+
+        with tab_ventajas:
+            st.subheader("Ventajas")
+            st.markdown("""
+            * ✔️ Rápido efecto de derribo.
+            * ✔️ Excelente efecto residual.
+            * ✔️ Base agua (menor olor que los concentrados emulsionables).
+            * ✔️ La microencapsulación reduce la degradación por luz y temperatura.
+            * ✔️ Puede aplicarse sobre superficies porosas y no porosas.
+            """)
+
+        with tab_dosis:
+            st.subheader("Dosis Recomendada")
+            st.markdown("La dosis depende de la plaga y del nivel de infestación. Siempre debe seguirse la **etiqueta oficial del producto**. La ficha técnica del fabricante proporciona las concentraciones autorizadas para cada tipo de aplicación.")
+
+        with tab_epp:
+            st.subheader("Equipo de Protección Personal")
+            st.markdown("""
+            Durante la aplicación se recomienda utilizar:
+
+            * Guantes resistentes a químicos.
+            * Lentes de seguridad.
+            * Mascarilla o respirador adecuado cuando exista riesgo de inhalación.
+            * Overol o ropa de manga larga.
+            * Botas de trabajo.
+            """)
+
+        with tab_precauciones:
+            st.subheader("Precauciones")
+            st.warning("""
+            * Mantener fuera del alcance de niños y mascotas.
+            * Evitar contaminar alimentos y utensilios.
+            * No aplicar directamente sobre personas o animales.
+            * Es altamente tóxico para organismos acuáticos, por lo que no debe desecharse en ríos, lagos o drenajes.
+            """)
+
+        with tab_residual:
+            st.subheader("Tiempo Residual")
+            st.markdown("""
+            El efecto residual suele mantenerse **varias semanas**, dependiendo de factores como:
+
+            * Tipo de superficie.
+            * Exposición al sol.
+            * Lluvia.
+            * Frecuencia de limpieza.
+            * Nivel de infestación.
+            """)
+
+    elif producto_seleccionado == "Próximamente más productos...":
+        st.info("Estamos actualizando el catálogo con nuevos productos químicos. ¡Vuelve pronto!")
+
+# =============================================================================
 # 5. AUTENTICACIÓN MEJORADA
 # =============================================================================
 if "user" not in st.session_state:
@@ -1058,6 +1222,7 @@ def vista_tecnico():
     opcion = mostrar_navegacion(
         [
             "🏠 Inicio / Catálogo",
+            "🧪 Productos Químicos",
             "➕ Registrar Servicio",
             "👥 Gestión Clientes",
             "📊 Historial & Reportes",
@@ -1070,6 +1235,9 @@ def vista_tecnico():
     
     if opcion == "🏠 Inicio / Catálogo":
         mostrar_catalogo_plagas_principal()
+
+    elif opcion == "🧪 Productos Químicos":
+        mostrar_catalogo_quimicos_principal()
 
     elif opcion == "➕ Registrar Servicio":
         st.subheader("📝 Registrar Servicio de Fumigación")
@@ -1179,6 +1347,7 @@ def vista_cliente():
     opcion = mostrar_navegacion(
         [
             "🏠 Inicio / Catálogo",
+            "🧪 Productos Químicos",
             "📋 Mis Servicios & Reportes",
             "💬 Mensajería"
         ],
@@ -1188,6 +1357,9 @@ def vista_cliente():
     
     if opcion == "🏠 Inicio / Catálogo":
         mostrar_catalogo_plagas_principal()
+
+    elif opcion == "🧪 Productos Químicos":
+        mostrar_catalogo_quimicos_principal()
 
     elif opcion == "📋 Mis Servicios & Reportes":
         st.subheader("📋 Historial de Servicios en tu Local")
