@@ -1431,7 +1431,6 @@ def vista_tecnico():
             "➕ Registrar Servicio",
             "👥 Gestión Clientes",
             "📊 Historial & Reportes",
-            "📈 Infestación Mensual",
             "⚙️ Configurar Rangos",
             "📍 Ubicación Real",
             "💬 Mensajería"
@@ -1445,9 +1444,6 @@ def vista_tecnico():
 
     elif opcion == "🧪 Productos Químicos":
         mostrar_catalogo_quimicos_principal()
-
-    elif opcion == "📈 Infestación Mensual":
-        mostrar_grafica_infestacion()
 
     elif opcion == "⚙️ Configurar Rangos":
         mostrar_configurar_rangos()
@@ -1494,6 +1490,9 @@ def vista_tecnico():
                 nivel_calculado = clasificar_nivel_infestacion(int(cantidad_observada), tipo_cliente)
                 guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, path_img, nivel_calculado, int(cantidad_observada))
                 st.success(f"✅ Servicio registrado correctamente. Nivel de infestación asignado: **{nivel_calculado}** ({int(cantidad_observada)} plagas observadas).")
+
+        st.markdown("---")
+        mostrar_grafica_infestacion()
 
     elif opcion == "👥 Gestión Clientes":
         st.subheader("👥 Gestión de Clientes y Locales")
