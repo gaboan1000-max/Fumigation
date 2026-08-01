@@ -138,6 +138,10 @@ def init_db():
         c.execute("ALTER TABLE clientes_registrados ADD COLUMN tecnico_asignado TEXT")
     except sqlite3.OperationalError:
         pass
+    try:
+        c.execute("ALTER TABLE clientes_registrados ADD COLUMN tipo_establecimiento TEXT DEFAULT 'Vivienda'")
+    except sqlite3.OperationalError:
+        pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS reportes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -167,6 +171,31 @@ def init_db():
             fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS rangos_infestacion (
+            tipo_establecimiento TEXT NOT NULL,
+            nivel TEXT NOT NULL,
+            minimo INTEGER NOT NULL,
+            maximo INTEGER,
+            PRIMARY KEY (tipo_establecimiento, nivel)
+        )
+    ''')
+    # Sembrar rangos por defecto solo si la tabla está vacía (no pisa ajustes ya hechos por el técnico)
+    c.execute("SELECT COUNT(*) FROM rangos_infestacion")
+    if c.fetchone()[0] == 0:
+        rangos_default = [
+            # tipo_establecimiento, nivel, minimo, maximo (None = sin tope)
+            ("Vivienda",              "Baja", 1, 10), ("Vivienda",              "Media", 11, 50), ("Vivienda",              "Alta", 51, None),
+            ("Hotel",                 "Baja", 1, 5),  ("Hotel",                 "Media", 6, 20),  ("Hotel",                 "Alta", 21, None),
+            ("Restaurante / Comercio","Baja", 1, 3),  ("Restaurante / Comercio","Media", 4, 15),  ("Restaurante / Comercio","Alta", 16, None),
+            ("Industria Alimentaria", "Baja", 1, 2),  ("Industria Alimentaria", "Media", 3, 10),  ("Industria Alimentaria", "Alta", 11, None),
+            ("Hospital / Escuela",    "Baja", 1, 5),  ("Hospital / Escuela",    "Media", 6, 20),  ("Hospital / Escuela",    "Alta", 21, None),
+            ("Oficina / Bodega",      "Baja", 1, 10), ("Oficina / Bodega",      "Media", 11, 40), ("Oficina / Bodega",      "Alta", 41, None),
+        ]
+        c.executemany(
+            "INSERT INTO rangos_infestacion(tipo_establecimiento, nivel, minimo, maximo) VALUES (?,?,?,?)",
+            rangos_default
+        )
     conn.commit()
     conn.close()
 
@@ -264,13 +293,15 @@ def login_usuario(correo, password):
             return data
     return None
 
-def agregar_cliente_db(nombre_local, responsable, telefono, direccion, tecnico_asignado=None):
+TIPOS_ESTABLECIMIENTO = ["Vivienda", "Hotel", "Restaurante / Comercio", "Industria Alimentaria", "Hospital / Escuela", "Oficina / Bodega"]
+
+def agregar_cliente_db(nombre_local, responsable, telefono, direccion, tecnico_asignado=None, tipo_establecimiento="Vivienda"):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     try:
         c.execute(
-            "INSERT INTO clientes_registrados(nombre_local, responsable, telefono, direccion, tecnico_asignado) VALUES (?,?,?,?,?)",
-            (nombre_local.strip(), responsable.strip(), telefono.strip(), direccion.strip(), tecnico_asignado)
+            "INSERT INTO clientes_registrados(nombre_local, responsable, telefono, direccion, tecnico_asignado, tipo_establecimiento) VALUES (?,?,?,?,?,?)",
+            (nombre_local.strip(), responsable.strip(), telefono.strip(), direccion.strip(), tecnico_asignado, tipo_establecimiento)
         )
         conn.commit()
         return True
@@ -278,6 +309,17 @@ def agregar_cliente_db(nombre_local, responsable, telefono, direccion, tecnico_a
         return False
     finally:
         conn.close()
+
+def obtener_tipo_establecimiento(nombre_cliente):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        "SELECT tipo_establecimiento FROM clientes_registrados WHERE nombre_local = ? COLLATE NOCASE",
+        (nombre_cliente,)
+    )
+    fila = c.fetchone()
+    conn.close()
+    return fila[0] if fila and fila[0] else "Vivienda"
 
 def obtener_lista_clientes():
     conn = sqlite3.connect(DB_NAME)
@@ -305,22 +347,46 @@ def obtener_contactos_disponibles(mi_nombre):
     conn.close()
     return contactos
 
-RANGOS_INFESTACION = [
-    ("Baja", 1, 10, "🟢", "Se observan pocos individuos o evidencia mínima de actividad. No representa una infestación generalizada."),
-    ("Media", 11, 50, "🟡", "Presencia frecuente de la plaga en una o varias áreas. Requiere tratamiento correctivo."),
-    ("Alta", 51, None, "🔴", "Presencia numerosa y generalizada de la plaga. Requiere intervención inmediata."),
-]
+DESCRIPCION_NIVEL = {
+    "Baja": ("🟢", "Se observan pocos individuos o evidencia mínima de actividad. No representa una infestación generalizada."),
+    "Media": ("🟡", "Presencia frecuente de la plaga en una o varias áreas. Requiere tratamiento correctivo."),
+    "Alta": ("🔴", "Presencia numerosa y generalizada de la plaga. Requiere intervención inmediata."),
+}
 
-def clasificar_nivel_infestacion(cantidad):
-    """Clasifica la cantidad observada en Baja (1-10), Media (11-50) o Alta (más de 50)."""
-    if cantidad <= 0:
-        return "Baja"
-    if cantidad <= 10:
-        return "Baja"
-    elif cantidad <= 50:
-        return "Media"
-    else:
-        return "Alta"
+def obtener_rangos_por_tipo(tipo_establecimiento):
+    """Devuelve [(nivel, minimo, maximo), ...] ordenados Baja/Media/Alta para ese tipo de establecimiento."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        "SELECT nivel, minimo, maximo FROM rangos_infestacion WHERE tipo_establecimiento = ?",
+        (tipo_establecimiento,)
+    )
+    filas = {nivel: (minimo, maximo) for nivel, minimo, maximo in c.fetchall()}
+    conn.close()
+    orden = ["Baja", "Media", "Alta"]
+    return [(nivel, filas[nivel][0], filas[nivel][1]) for nivel in orden if nivel in filas]
+
+def actualizar_rango(tipo_establecimiento, nivel, minimo, maximo):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        "UPDATE rangos_infestacion SET minimo = ?, maximo = ? WHERE tipo_establecimiento = ? AND nivel = ?",
+        (minimo, maximo, tipo_establecimiento, nivel)
+    )
+    conn.commit()
+    conn.close()
+
+def clasificar_nivel_infestacion(cantidad, tipo_establecimiento="Vivienda"):
+    """Clasifica la cantidad observada en Baja/Media/Alta según los rangos definidos para ese tipo de establecimiento."""
+    rangos = obtener_rangos_por_tipo(tipo_establecimiento)
+    if not rangos:
+        rangos = obtener_rangos_por_tipo("Vivienda")
+    for nivel, minimo, maximo in rangos:
+        if cantidad < minimo:
+            continue
+        if maximo is None or cantidad <= maximo:
+            return nivel
+    return rangos[-1][0] if rangos else "Baja"
 
 def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion="Media", cantidad_observada=0):
     conn = sqlite3.connect(DB_NAME)
@@ -1052,10 +1118,13 @@ def mostrar_grafica_infestacion():
     st.subheader("📈 Nivel de Infestación Mensual")
     st.caption("Cantidad de servicios registrados por nivel de infestación (Baja, Media, Alta) a lo largo del año.")
 
-    with st.expander("ℹ️ ¿Cómo se clasifica el nivel de infestación?"):
-        for nivel, minimo, maximo, icono, descripcion in RANGOS_INFESTACION:
+    tipo_ref = st.selectbox("Ver rangos de referencia para:", TIPOS_ESTABLECIMIENTO, key="tipo_ref_grafica")
+    with st.expander(f"ℹ️ ¿Cómo se clasifica la infestación en '{tipo_ref}'?"):
+        for nivel, minimo, maximo in obtener_rangos_por_tipo(tipo_ref):
+            icono, descripcion = DESCRIPCION_NIVEL[nivel]
             rango_texto = f"{minimo} a {maximo}" if maximo else f"Más de {minimo - 1}"
             st.markdown(f"**{icono} {nivel}** ({rango_texto}): {descripcion}")
+        st.caption("Cada nivel se asigna automáticamente según el tipo de establecimiento del cliente. Puedes ajustar estos números en '⚙️ Configurar Rangos'.")
 
     anios_disponibles = obtener_anios_disponibles()
     anio_actual = str(datetime.now().year)
@@ -1097,6 +1166,38 @@ def mostrar_grafica_infestacion():
 
     with st.expander("📋 Ver tabla de datos"):
         st.dataframe(df_infestacion, use_container_width=True)
+
+# =============================================================================
+# 4D. CONFIGURAR RANGOS DE INFESTACIÓN POR TIPO DE ESTABLECIMIENTO (SOLO TÉCNICOS)
+# =============================================================================
+def mostrar_configurar_rangos():
+    st.subheader("⚙️ Configurar Rangos de Infestación")
+    st.caption("Ajusta a partir de cuántas plagas observadas se considera Baja, Media o Alta, según el tipo de lugar. Estos valores son los que usa el sistema para clasificar automáticamente cada servicio registrado.")
+
+    tipo_edit = st.selectbox("Tipo de Establecimiento", TIPOS_ESTABLECIMIENTO, key="tipo_config_rangos")
+    rangos_actuales = obtener_rangos_por_tipo(tipo_edit)
+
+    with st.form(f"form_rangos_{tipo_edit}"):
+        nuevos_valores = {}
+        for nivel, minimo, maximo in rangos_actuales:
+            icono, _ = DESCRIPCION_NIVEL[nivel]
+            col1, col2 = st.columns(2)
+            with col1:
+                nuevo_min = st.number_input(f"{icono} {nivel} — desde", min_value=0, value=int(minimo), step=1, key=f"min_{tipo_edit}_{nivel}")
+            with col2:
+                if nivel == "Alta":
+                    st.text_input(f"{icono} {nivel} — hasta", value="Sin límite", disabled=True, key=f"max_{tipo_edit}_{nivel}")
+                    nuevo_max = None
+                else:
+                    nuevo_max = st.number_input(f"{icono} {nivel} — hasta", min_value=0, value=int(maximo), step=1, key=f"max_{tipo_edit}_{nivel}")
+            nuevos_valores[nivel] = (nuevo_min, nuevo_max)
+
+        guardar = st.form_submit_button("💾 Guardar Rangos", type="primary", use_container_width=True)
+        if guardar:
+            for nivel, (minimo, maximo) in nuevos_valores.items():
+                actualizar_rango(tipo_edit, nivel, minimo, maximo)
+            st.success(f"✅ Rangos actualizados para '{tipo_edit}'.")
+            st.rerun()
 
 # =============================================================================
 # 5. AUTENTICACIÓN MEJORADA
@@ -1334,6 +1435,7 @@ def vista_tecnico():
             "👥 Gestión Clientes",
             "📊 Historial & Reportes",
             "📈 Infestación Mensual",
+            "⚙️ Configurar Rangos",
             "📍 Ubicación Real",
             "💬 Mensajería"
         ],
@@ -1350,25 +1452,32 @@ def vista_tecnico():
     elif opcion == "📈 Infestación Mensual":
         mostrar_grafica_infestacion()
 
+    elif opcion == "⚙️ Configurar Rangos":
+        mostrar_configurar_rangos()
+
     elif opcion == "➕ Registrar Servicio":
         st.subheader("📝 Registrar Servicio de Fumigación")
         lista_clientes = obtener_lista_clientes()
 
-        with st.expander("ℹ️ ¿Cómo se clasifica el nivel de infestación?"):
-            for nivel, minimo, maximo, icono, descripcion in RANGOS_INFESTACION:
+        cliente = st.selectbox("Cliente / Local", options=lista_clientes if lista_clientes else ["Sin clientes"], key="cliente_sel_servicio")
+        tipo_cliente = obtener_tipo_establecimiento(cliente) if lista_clientes else "Vivienda"
+
+        with st.expander(f"ℹ️ Rangos de infestación para '{cliente}' (Tipo: {tipo_cliente})", expanded=True):
+            for nivel, minimo, maximo in obtener_rangos_por_tipo(tipo_cliente):
+                icono, descripcion = DESCRIPCION_NIVEL[nivel]
                 rango_texto = f"{minimo} a {maximo}" if maximo else f"Más de {minimo - 1}"
                 st.markdown(f"**{icono} {nivel}** ({rango_texto}): {descripcion}")
+            st.caption("Cambia el tipo de establecimiento de este cliente desde '👥 Gestión Clientes' → editar, o ajusta los rangos en '⚙️ Configurar Rangos'.")
         
         with st.form("registro_fumigacion", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
-                cliente = st.selectbox("Cliente / Local", options=lista_clientes if lista_clientes else ["Sin clientes"])
                 plaga = st.text_input("Tipo de Plaga", placeholder="Ej. Cucaracha alemana, Roedores")
                 tratamiento = st.text_area("Tratamiento Aplicado / Productos", placeholder="Ej. Aplicación de gel específico y aspersión perimetral.")
                 cantidad_observada = st.number_input(
                     "Cantidad de Plagas Observadas",
                     min_value=0, step=1, value=0,
-                    help="1 a 10 = Baja · 11 a 50 = Media · Más de 50 = Alta"
+                    help=f"Se clasificará según los rangos de '{tipo_cliente}' mostrados arriba."
                 )
             with col2:
                 estatus = st.selectbox("Estatus del Servicio", ["Completado", "En Proceso", "Seguimiento Requerido"])
@@ -1385,7 +1494,7 @@ def vista_tecnico():
                     with open(path_img, "wb") as f:
                         f.write(evidencia.getbuffer())
                 
-                nivel_calculado = clasificar_nivel_infestacion(int(cantidad_observada))
+                nivel_calculado = clasificar_nivel_infestacion(int(cantidad_observada), tipo_cliente)
                 guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, path_img, nivel_calculado, int(cantidad_observada))
                 st.success(f"✅ Servicio registrado correctamente. Nivel de infestación asignado: **{nivel_calculado}** ({int(cantidad_observada)} plagas observadas).")
 
@@ -1428,11 +1537,12 @@ def vista_tecnico():
                 responsable = st.text_input("Persona Responsable")
                 tel_local = st.text_input("Teléfono de Contacto")
                 dir_local = st.text_input("Dirección Completa")
+                tipo_local = st.selectbox("Tipo de Establecimiento", TIPOS_ESTABLECIMIENTO, help="Define los rangos de infestación (Baja/Media/Alta) que se usarán para este cliente.")
                 
                 btn_cli = st.form_submit_button("Guardar Cliente", type="primary")
                 if btn_cli:
                     if nombre_local.strip():
-                        if agregar_cliente_db(nombre_local, responsable, tel_local, dir_local):
+                        if agregar_cliente_db(nombre_local, responsable, tel_local, dir_local, tipo_establecimiento=tipo_local):
                             st.success("✅ Cliente registrado con éxito.")
                             st.rerun()
                         else:
@@ -1443,7 +1553,7 @@ def vista_tecnico():
         st.markdown("### Listado de Clientes Registrados")
         clientes_detalle = obtener_todos_clientes_detalle()
         if clientes_detalle:
-            df_clientes = pd.DataFrame(clientes_detalle, columns=["ID", "Local/Empresa", "Responsable", "Teléfono", "Dirección", "Técnico Asignado"])
+            df_clientes = pd.DataFrame(clientes_detalle, columns=["ID", "Local/Empresa", "Responsable", "Teléfono", "Dirección", "Técnico Asignado", "Tipo de Establecimiento"])
             st.dataframe(df_clientes.drop(columns=["ID"]), use_container_width=True)
         else:
             st.info("No hay clientes registrados todavía.")
