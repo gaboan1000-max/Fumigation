@@ -628,10 +628,8 @@ def mostrar_navegacion(opciones, session_key, rol_label):
     if session_key not in st.session_state:
         st.session_state[session_key] = opciones[0]
 
-    def _sync_side():
-        st.session_state[session_key] = st.session_state[f"{session_key}_side"]
-
-    indice_actual = opciones.index(st.session_state[session_key])
+    if st.session_state[session_key] not in opciones:
+        st.session_state[session_key] = opciones[0]
 
     # Lógica centralizada para obtener el código si el usuario es Técnico
     codigo_html_top = ""
@@ -721,9 +719,8 @@ def mostrar_navegacion(opciones, session_key, rol_label):
         st.markdown('<div class="menu-title">MENÚ PRINCIPAL</div>', unsafe_allow_html=True)
 
         st.radio(
-            "", opciones, key=f"{session_key}_side",
-            index=indice_actual, label_visibility="collapsed",
-            on_change=_sync_side
+            "", opciones, key=session_key,
+            label_visibility="collapsed"
         )
 
         st.markdown("<br><br>", unsafe_allow_html=True)
