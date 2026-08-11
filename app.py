@@ -962,8 +962,8 @@ CLASES_TOXICOLOGICAS = {
 CLASE_TOXICOLOGICA_PRODUCTOS = {
     "Demand® 2.5 CS (Syngenta)": "Verde",
     "Termidor® 25 CE (BASF)": "Verde",
+    "DDVP® 500 U (Agroquímica Tridente)": "Roja",
     # "Otro producto®": "Amarilla",
-    # "Otro producto 2®": "Roja",
 }
 
 def mostrar_badge_toxicidad(clase, mostrar_descripcion=True):
@@ -1056,6 +1056,7 @@ def mostrar_catalogo_quimicos_principal():
         [
             "Demand® 2.5 CS (Syngenta)",
             "Termidor® 25 CE (BASF)",
+            "DDVP® 500 U (Agroquímica Tridente)",
             "Próximamente más productos..."
         ]
     )
@@ -1346,6 +1347,164 @@ def mostrar_catalogo_quimicos_principal():
             La franja de color impresa en la etiqueta del producto indica el nivel de riesgo
             para la salud humana según la vía de exposición (oral, dérmica o inhalación).
             La ficha técnica del fabricante reporta además una categoría toxicológica numérica (5)
+            que corresponde a su propio sistema de clasificación; consulta siempre la etiqueta
+            oficial vigente para el dato definitivo.
+            """)
+
+    elif producto_seleccionado == "DDVP® 500 U (Agroquímica Tridente)":
+        st.markdown("---")
+        col_img, col_info = st.columns([1, 1])
+
+        with col_img:
+            if os.path.exists("ddvp_500u.jpg"):
+                st.image("ddvp_500u.jpg", caption="DDVP® 500 U - Agroquímica Tridente", use_container_width=True)
+            else:
+                st.info("💡 Guarda la imagen 'ddvp_500u.jpg' en la carpeta raíz.")
+                uploaded_img = st.file_uploader("O sube la imagen del producto aquí:", type=["jpg", "png", "jpeg"], key="info_ddvp500u")
+                if uploaded_img:
+                    with open("ddvp_500u.jpg", "wb") as f:
+                        f.write(uploaded_img.getbuffer())
+                    st.rerun()
+
+        with col_info:
+            st.header("🧪 DDVP® 500 U (*Agroquímica Tridente*)")
+            st.markdown("""
+            **DDVP® 500 U** es la presentación urbana de Agroquímica Tridente formulada con **diclorvos**.
+            No es exactamente lo mismo que el DDVP 500 agrícola; aunque ambos contienen diclorvós, tienen
+            registros y usos distintos. COFEPRIS identifica este producto dentro del registro urbano para
+            **uso exclusivo de aplicadores de plaguicidas**.
+            """)
+            st.info("""
+            **Información General**  
+            • **Nombre comercial:** DDVP® 500 U  
+            • **Fabricante:** Agroquímica Tridente, S.A. de C.V.  
+            • **Ingrediente activo:** Diclorvos (DDVP)  
+            • **Concentración:** 47.50 % p/p  
+            • **Equivalencia:** 500 g de I.A./L a 20 °C  
+            • **Formulación:** Concentrado Emulsionable (CE)  
+            • **Familia química:** Organofosforados  
+            • **Registro sanitario:** RSCO-URB-INAC-121-321-009-48  
+            • **Categoría toxicológica (ficha del fabricante):** 2 — Peligro
+            """)
+
+            mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+            st.error("⚠️ Uso urbano exclusivo para aplicadores de plaguicidas, conforme a COFEPRIS.")
+
+        st.markdown("---")
+
+        tab_plagas, tab_accion, tab_dosis, tab_lugares, tab_aplicacion, tab_seguridad, tab_comparativo, tab_toxi = st.tabs([
+            "🐜 Plagas que Controla", "⚙️ Modo de Acción", "💧 Dosis", "🏠 Lugares de Aplicación",
+            "🌫️ Aspersión y Nebulización", "⚠️ Seguridad", "🆚 Comparativo", "🏷️ Toxicidad"
+        ])
+
+        with tab_plagas:
+            st.subheader("¿Qué plagas controla?")
+            st.markdown("""
+            La ficha urbana contempla principalmente:
+
+            * Cucaracha alemana (*Blattella germanica*)
+            * Cucaracha americana (*Periplaneta americana*)
+            * Alacranes (*Centruroides spp.*)
+            * Polilla de la alfombra (*Trichophaga tapetzella*)
+            * Polilla de tapete
+
+            El producto está destinado al control profesional de plagas urbanas.
+            """)
+
+        with tab_accion:
+            st.subheader("¿Cómo funciona?")
+            st.markdown("""
+            El diclorvos es un organofosforado que actúa principalmente sobre el sistema nervioso de
+            los artrópodos mediante la inhibición de la acetilcolinesterasa.
+
+            En términos sencillos:
+
+            **DDVP → inhibe acetilcolinesterasa → acumulación de acetilcolina → alteración nerviosa
+            → parálisis → muerte.**
+
+            El fabricante describe acción por contacto y estomacal, y el producto posee volatilidad
+            que contribuye a su acción en determinadas aplicaciones.
+            """)
+
+        with tab_dosis:
+            st.subheader("Dosis para aspersión")
+            st.markdown("Para las plagas urbanas indicadas, la documentación comercial señala **10–20 mL de producto por cada litro de agua**.")
+            df_dosis = pd.DataFrame(
+                {"DDVP 500 U": ["10–20 mL", "50–100 mL", "100–200 mL", "200–400 mL"]},
+                index=["1 L de agua", "5 L de agua", "10 L de agua", "20 L de agua"]
+            )
+            st.dataframe(df_dosis, use_container_width=True)
+            st.caption("Utiliza la dosis y método que correspondan a la etiqueta vigente del envase que tengas. No conviene extrapolar una dosis de otra formulación de DDVP.")
+
+        with tab_lugares:
+            st.subheader("¿Dónde se puede utilizar?")
+            st.markdown("""
+            La documentación del producto contempla aplicaciones urbanas en lugares como:
+
+            * Casas habitación
+            * Restaurantes
+            * Supermercados
+            * Bodegas
+            * Sótanos
+            * Escuelas
+            * Oficinas
+            * Edificios
+            * Instalaciones comerciales e industriales
+
+            Para aplicaciones de aspersión, se indican sitios como grietas y hendiduras, espacios entre
+            paredes, alrededor de coladeras, marcos de puertas, tuberías y ductos, de acuerdo con la etiqueta.
+            """)
+
+        with tab_aplicacion:
+            st.subheader("Aspersión y Nebulización")
+            st.markdown("""
+            Una característica del DDVP 500 U es que se contempla para diferentes modalidades de aplicación, incluyendo:
+
+            * Aspersión manual.
+            * Aspersión motorizada.
+            * Nebulización en frío.
+            * Termonebulización.
+            """)
+            st.warning("La nebulización requiere controles de seguridad mucho más estrictos debido a la exposición potencial a vapores y aerosol.")
+
+        with tab_seguridad:
+            st.subheader("Seguridad")
+            st.error("DDVP 500 U es **categoría toxicológica 2 — PELIGRO**, y COFEPRIS establece que su uso urbano es exclusivo para aplicadores de plaguicidas.")
+            st.markdown("""
+            Por ser diclorvos:
+
+            * Evita inhalar vapores o neblina.
+            * Evita contacto con piel y ojos.
+            * Utiliza el EPP indicado por la etiqueta y HDS.
+            * Retira personas, mascotas y alimentos de las áreas que vayan a tratarse.
+            * No comas, bebas ni fumes durante la preparación/aplicación.
+            * No apliques directamente sobre personas o animales.
+            * Respeta las condiciones de ventilación y reingreso.
+            * Evita absolutamente la contaminación de agua.
+            * Conserva el producto en su envase original.
+            """)
+            st.caption("La HDS de Tridente identifica al diclorvos como organofosforado y proporciona medidas específicas de primeros auxilios y manejo de exposición.")
+
+        with tab_comparativo:
+            st.subheader("Comparación rápida con los productos del catálogo")
+            df_comparativo_ddvp = pd.DataFrame(
+                {
+                    "Ingrediente": ["Lambda-cihalotrina 2.5%", "Fipronil", "Diclorvos 47.5%"],
+                    "Grupo": ["Piretroide", "Fenilpirazol", "Organofosforado"],
+                    "Principal uso": ["Plagas urbanas", "Termitas", "Cucarachas, alacranes, polillas"],
+                },
+                index=["Demand 2.5 CS", "Termidor 25 CE", "DDVP 500 U"]
+            )
+            st.dataframe(df_comparativo_ddvp, use_container_width=True)
+            st.caption("Una diferencia importante es que DDVP 500 U no debería tratarse como un insecticida rutinario de bajo riesgo: su registro lo clasifica como categoría toxicológica 2 y restringe su uso a aplicadores de plaguicidas.")
+
+        with tab_toxi:
+            st.subheader("Clasificación Toxicológica")
+            mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+            st.markdown("""
+            La franja de color impresa en la etiqueta del producto indica el nivel de riesgo
+            para la salud humana según la vía de exposición (oral, dérmica o inhalación).
+            La ficha técnica del fabricante reporta además una categoría toxicológica numérica (2 — Peligro)
             que corresponde a su propio sistema de clasificación; consulta siempre la etiqueta
             oficial vigente para el dato definitivo.
             """)
