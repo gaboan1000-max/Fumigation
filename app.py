@@ -960,7 +960,8 @@ CLASES_TOXICOLOGICAS = {
 # 🔧 AQUÍ VAS A ASIGNAR LA FRANJA DE CADA PRODUCTO.
 # Usa como clave EXACTAMENTE el texto que aparece en el selectbox de productos.
 CLASE_TOXICOLOGICA_PRODUCTOS = {
-    "Demand® 2.5 CS (Syngenta)": "Verde",   # <-- ajusta si no es la clase real
+    "Demand® 2.5 CS (Syngenta)": "Verde",
+    "Termidor® 25 CE (BASF)": "Verde",
     # "Otro producto®": "Amarilla",
     # "Otro producto 2®": "Roja",
 }
@@ -1054,6 +1055,7 @@ def mostrar_catalogo_quimicos_principal():
         "🔍 Selecciona un producto para ver su ficha técnica:",
         [
             "Demand® 2.5 CS (Syngenta)",
+            "Termidor® 25 CE (BASF)",
             "Próximamente más productos..."
         ]
     )
@@ -1203,6 +1205,149 @@ def mostrar_catalogo_quimicos_principal():
             La franja de color impresa en la etiqueta del producto indica el nivel de riesgo
             para la salud humana según la vía de exposición (oral, dérmica o inhalación).
             Consulta siempre la etiqueta oficial del fabricante para el dato definitivo.
+            """)
+
+    elif producto_seleccionado == "Termidor® 25 CE (BASF)":
+        st.markdown("---")
+        col_img, col_info = st.columns([1, 1])
+
+        with col_img:
+            if os.path.exists("termidor_25ce.jpg"):
+                st.image("termidor_25ce.jpg", caption="Termidor® 25 CE - BASF", use_container_width=True)
+            else:
+                st.info("💡 Guarda la imagen 'termidor_25ce.jpg' en la carpeta raíz.")
+                uploaded_img = st.file_uploader("O sube la imagen del producto aquí:", type=["jpg", "png", "jpeg"], key="info_termidor25ce")
+                if uploaded_img:
+                    with open("termidor_25ce.jpg", "wb") as f:
+                        f.write(uploaded_img.getbuffer())
+                    st.rerun()
+
+        with col_info:
+            st.header("🐜 Termidor® 25 CE (*BASF*)")
+            st.markdown("""
+            **Termidor® 25 CE** es un insecticida profesional formulado con **Fipronil**, especialmente
+            orientado al control de **termitas**, aunque su registro en México también contempla
+            varias otras plagas urbanas.
+            """)
+            st.info("""
+            **Información General**  
+            • **Nombre comercial:** Termidor® 25 CE  
+            • **Fabricante:** BASF  
+            • **Ingrediente activo:** Fipronil  
+            • **Concentración:** 3% p/p, equivalente a 25 g/L  
+            • **Formulación:** Concentrado Emulsionable (CE)  
+            • **Grupo químico:** Fenilpirazoles  
+            • **Registro México:** RSCO-URB-INAC-0101A-X0025-009-003  
+            • **Categoría toxicológica (ficha del fabricante):** 5
+            """)
+
+            mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+            st.caption("Franja asignada en esta plataforma: Verde. La ficha del fabricante reporta categoría toxicológica 5; verifica siempre la etiqueta oficial vigente.")
+
+        st.markdown("---")
+
+        tab_uso, tab_accion, tab_lugares, tab_dilucion, tab_diferencias, tab_precauciones, tab_toxi = st.tabs([
+            "🎯 Para qué sirve", "⚙️ Modo de Acción", "🏠 Dónde se Utiliza",
+            "💧 Dilución", "🆚 Termidor vs Demand", "⚠️ Precauciones", "🏷️ Toxicidad"
+        ])
+
+        with tab_uso:
+            st.subheader("¿Para qué sirve?")
+            st.markdown("""
+            Su principal uso es el **control y prevención de termitas**, incluyendo:
+
+            * Termitas subterráneas
+            * Termitas de madera seca
+            * Termitas de nidos acartonados
+
+            También está registrado en México para: cucarachas, hormigas, moscas, mosquitos, avispas,
+            pulgas, chinches, chinches de cama, pescadito de plata, grillos, cochinillas, tijerillas,
+            alacranes, arañas, ciempiés, gorgojos y garrapatas.
+            """)
+
+        with tab_accion:
+            st.subheader("¿Cómo funciona?")
+            st.markdown("""
+            El **fipronil** afecta el sistema nervioso de los insectos. Una característica especialmente
+            importante de Termidor es su **efecto de transferencia**: una termita que entra en contacto
+            con el producto puede llevar partículas del insecticida al interior de la colonia y
+            transmitirlo a otros individuos.
+
+            Esto es especialmente relevante en tratamientos contra termitas, porque el control no depende
+            únicamente de matar a las termitas que entran directamente en contacto con la aplicación.
+            BASF señala este efecto como una de las características principales del producto.
+            """)
+
+        with tab_lugares:
+            st.subheader("¿Dónde se utiliza?")
+            st.markdown("""
+            La ficha técnica mexicana contempla aplicaciones en exteriores de instalaciones como:
+
+            * Casas y edificios
+            * Escuelas
+            * Hoteles
+            * Restaurantes
+            * Oficinas
+            * Almacenes
+            * Supermercados
+            * Plantas industriales
+            * Hospitales
+            * Alcantarillas y coladeras
+            * Zoológicos
+            * Tiendas de mascotas
+
+            También se utiliza en tratamientos previos y posteriores a la construcción para establecer
+            barreras contra termitas subterráneas.
+            """)
+
+        with tab_dilucion:
+            st.subheader("Dilución para termitas")
+            st.markdown("""
+            Es importante distinguir entre la **concentración del producto** y la **cantidad de
+            producto comercial** que se prepara.
+
+            La ficha técnica mexicana indica que para preparar la emulsión destinada a tratamientos
+            contra termitas se utilizan:
+
+            * **2 L** de Termidor 25 CE por cada **100 L** de agua → emulsión al **2%**
+            * **4 L** de Termidor 25 CE por cada **100 L** de agua → emulsión al **4%**
+            """)
+            st.caption("La dosis exacta depende del tipo de tratamiento y de la plaga, por lo que debe respetarse la etiqueta y el método autorizado para cada situación.")
+
+        with tab_diferencias:
+            st.subheader("Diferencia entre Termidor 25 CE y Demand 2.5 CS")
+            df_comparativo = pd.DataFrame(
+                {
+                    "Termidor 25 CE": ["Fipronil", "25 g/L", "Fenilpirazoles", "CE", "Termitas", "Sí", "Prolongado", "⭐⭐⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"],
+                    "Demand 2.5 CS": ["Lambda-cihalotrina", "25 g/L", "Piretroides", "CS", "Plagas urbanas", "No es su característica principal", "Prolongado", "⭐⭐", "⭐⭐⭐⭐⭐", "⭐⭐⭐⭐"],
+                },
+                index=["Ingrediente activo", "Concentración", "Familia", "Formulación", "Principal enfoque",
+                       "Efecto de transferencia", "Residual", "Termitas", "Cucarachas", "Hormigas"]
+            )
+            st.dataframe(df_comparativo, use_container_width=True)
+            st.caption(
+                "En pocas palabras: para un servicio profesional de termitas, Termidor 25 CE es mucho más "
+                "especializado por su fipronil y su efecto de transferencia; para tratamientos generales de "
+                "insectos urbanos, Demand 2.5 CS está más orientado a ese uso."
+            )
+
+        with tab_precauciones:
+            st.subheader("Precauciones")
+            st.warning("""
+            **Termidor 25 CE es un plaguicida profesional.** La ficha mexicana indica que su aplicación debe
+            ser realizada por profesionales en control de plagas urbanas, y las aplicaciones deben efectuarse
+            conforme a las restricciones de la etiqueta.
+            """)
+
+        with tab_toxi:
+            st.subheader("Clasificación Toxicológica")
+            mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+            st.markdown("""
+            La franja de color impresa en la etiqueta del producto indica el nivel de riesgo
+            para la salud humana según la vía de exposición (oral, dérmica o inhalación).
+            La ficha técnica del fabricante reporta además una categoría toxicológica numérica (5)
+            que corresponde a su propio sistema de clasificación; consulta siempre la etiqueta
+            oficial vigente para el dato definitivo.
             """)
 
     elif producto_seleccionado == "Próximamente más productos...":
