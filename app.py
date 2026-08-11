@@ -948,11 +948,107 @@ def mostrar_catalogo_plagas_principal():
         st.info("Estamos actualizando la enciclopedia técnica con nuevas especies. ¡Vuelve pronto!")
 
 # =============================================================================
-# 4B. CATÁLOGO DE PRODUCTOS QUÍMICOS
+# 4B. CLASIFICACIÓN TOXICOLÓGICA (FRANJAS DE COLOR) — NUEVO
+# =============================================================================
+CLASES_TOXICOLOGICAS = {
+    "Verde":    {"orden": 1, "categoria": "Categoría IV",  "descripcion": "Ligeramente tóxico",    "color": "#22c55e", "icono": "🟢"},
+    "Azul":     {"orden": 2, "categoria": "Categoría III", "descripcion": "Moderadamente tóxico",  "color": "#3b82f6", "icono": "🔵"},
+    "Amarilla": {"orden": 3, "categoria": "Categoría II",  "descripcion": "Altamente tóxico",      "color": "#eab308", "icono": "🟡"},
+    "Roja":     {"orden": 4, "categoria": "Categoría I",   "descripcion": "Extremadamente tóxico", "color": "#ef4444", "icono": "🔴"},
+}
+
+# 🔧 AQUÍ VAS A ASIGNAR LA FRANJA DE CADA PRODUCTO.
+# Usa como clave EXACTAMENTE el texto que aparece en el selectbox de productos.
+CLASE_TOXICOLOGICA_PRODUCTOS = {
+    "Demand® 2.5 CS (Syngenta)": "Verde",   # <-- ajusta si no es la clase real
+    # "Otro producto®": "Amarilla",
+    # "Otro producto 2®": "Roja",
+}
+
+def mostrar_badge_toxicidad(clase, mostrar_descripcion=True):
+    """Insignia visual con el color de la franja toxicológica del producto."""
+    datos = CLASES_TOXICOLOGICAS.get(clase)
+    if not datos:
+        st.caption("⚪ Sin clasificación toxicológica asignada todavía.")
+        return
+    descripcion_html = (
+        f'<div style="font-size:0.8rem; color:#e5e7eb; margin-top:2px;">'
+        f'{datos["descripcion"]} · {datos["categoria"]}</div>'
+        if mostrar_descripcion else ""
+    )
+    st.markdown(f"""
+        <div style="
+            display:inline-flex; align-items:center; gap:10px;
+            background: {datos['color']}22;
+            border: 1px solid {datos['color']};
+            border-radius: 10px;
+            padding: 10px 16px;
+            margin-bottom: 10px;
+        ">
+            <span style="font-size:1.4rem;">{datos['icono']}</span>
+            <div>
+                <div style="color:{datos['color']}; font-weight:800; letter-spacing:0.5px;">
+                    FRANJA {clase.upper()}
+                </div>
+                {descripcion_html}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+def mostrar_guia_clases_toxicologicas():
+    """Tabla de referencia con las 4 franjas de color."""
+    with st.expander("📖 Guía de Clasificación Toxicológica (Franjas de Color)"):
+        st.caption(
+            "Clasificación según la banda de color impresa en la etiqueta del "
+            "producto (categorías toxicológicas OMS / NOM-232-SSA1)."
+        )
+        for clase, datos in CLASES_TOXICOLOGICAS.items():
+            st.markdown(f"""
+                <div style="
+                    display:flex; align-items:center; gap:12px;
+                    border-left: 6px solid {datos['color']};
+                    background: #111827;
+                    border-radius: 8px;
+                    padding: 10px 14px;
+                    margin-bottom: 8px;
+                ">
+                    <span style="font-size:1.3rem;">{datos['icono']}</span>
+                    <div>
+                        <b style="color:{datos['color']};">Franja {clase}</b>
+                        — {datos['descripcion']} ({datos['categoria']})
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+def mostrar_filtro_por_clase_toxicologica():
+    """Selector para consultar rápidamente qué productos hay por franja."""
+    st.markdown("#### 🔍 Filtrar productos por franja toxicológica")
+    clase_filtro = st.selectbox(
+        "Selecciona una franja:",
+        list(CLASES_TOXICOLOGICAS.keys()),
+        key="filtro_clase_toxi"
+    )
+    productos_en_clase = [
+        prod for prod, clase in CLASE_TOXICOLOGICA_PRODUCTOS.items()
+        if clase == clase_filtro
+    ]
+    mostrar_badge_toxicidad(clase_filtro, mostrar_descripcion=True)
+    if productos_en_clase:
+        for p in productos_en_clase:
+            st.markdown(f"- {p}")
+    else:
+        st.caption("Ningún producto registrado en esta franja todavía.")
+
+# =============================================================================
+# 4C. CATÁLOGO DE PRODUCTOS QUÍMICOS
 # =============================================================================
 def mostrar_catalogo_quimicos_principal():
     st.title("🧪 Catálogo de Productos Químicos")
     st.caption("Fichas técnicas de los productos utilizados en los servicios de control de plagas.")
+
+    mostrar_guia_clases_toxicologicas()
+    with st.expander("🔍 Buscar por franja toxicológica"):
+        mostrar_filtro_por_clase_toxicologica()
 
     producto_seleccionado = st.selectbox(
         "🔍 Selecciona un producto para ver su ficha técnica:",
@@ -992,11 +1088,13 @@ def mostrar_catalogo_quimicos_principal():
             • **Grupo IRAC:** 3A
             """)
 
+            mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+
         st.markdown("---")
 
-        tab_accion, tab_plagas, tab_lugares, tab_ventajas, tab_dosis, tab_epp, tab_precauciones, tab_residual = st.tabs([
+        tab_accion, tab_plagas, tab_lugares, tab_ventajas, tab_dosis, tab_epp, tab_precauciones, tab_residual, tab_toxi = st.tabs([
             "⚙️ Modo de Acción", "🐜 Plagas que Controla", "🏢 Lugares de Aplicación",
-            "✅ Ventajas", "💧 Dosis", "🦺 EPP", "⚠️ Precauciones", "⏳ Tiempo Residual"
+            "✅ Ventajas", "💧 Dosis", "🦺 EPP", "⚠️ Precauciones", "⏳ Tiempo Residual", "🏷️ Toxicidad"
         ])
 
         with tab_accion:
@@ -1098,11 +1196,20 @@ def mostrar_catalogo_quimicos_principal():
             * Nivel de infestación.
             """)
 
+        with tab_toxi:
+            st.subheader("Clasificación Toxicológica")
+            mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+            st.markdown("""
+            La franja de color impresa en la etiqueta del producto indica el nivel de riesgo
+            para la salud humana según la vía de exposición (oral, dérmica o inhalación).
+            Consulta siempre la etiqueta oficial del fabricante para el dato definitivo.
+            """)
+
     elif producto_seleccionado == "Próximamente más productos...":
         st.info("Estamos actualizando el catálogo con nuevos productos químicos. ¡Vuelve pronto!")
 
 # =============================================================================
-# 4C. GRÁFICA DE NIVEL DE INFESTACIÓN MENSUAL (SOLO TÉCNICOS)
+# 4D. GRÁFICA DE NIVEL DE INFESTACIÓN MENSUAL (SOLO TÉCNICOS)
 # =============================================================================
 MESES_ORDEN = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
 MESES_NOMBRE = {
@@ -1165,7 +1272,7 @@ def mostrar_grafica_infestacion():
         st.dataframe(df_infestacion, use_container_width=True)
 
 # =============================================================================
-# 4D. CONFIGURAR RANGOS DE INFESTACIÓN POR TIPO DE ESTABLECIMIENTO (SOLO TÉCNICOS)
+# 4E. CONFIGURAR RANGOS DE INFESTACIÓN POR TIPO DE ESTABLECIMIENTO (SOLO TÉCNICOS)
 # =============================================================================
 def mostrar_configurar_rangos():
     st.subheader("⚙️ Configurar Rangos de Infestación")
