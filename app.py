@@ -182,6 +182,10 @@ def init_db():
         c.execute("ALTER TABLE reportes ADD COLUMN firma_path TEXT")
     except sqlite3.OperationalError:
         pass
+    try:
+        c.execute("ALTER TABLE reportes ADD COLUMN certificado_path TEXT")
+    except sqlite3.OperationalError:
+        pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS mensajes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -408,13 +412,13 @@ def clasificar_nivel_infestacion(cantidad, tipo_establecimiento="Vivienda"):
             return nivel
     return rangos[-1][0] if rangos else "Baja"
 
-def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion="Media", cantidad_observada=0, encargado_nombre="", firma_path=""):
+def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion="Media", cantidad_observada=0, encargado_nombre="", firma_path="", certificado_path=""):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute('''
-        INSERT INTO reportes(cliente_nombre, tecnico_nombre, tipo_plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada, encargado_nombre, firma_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada, encargado_nombre, firma_path))
+        INSERT INTO reportes(cliente_nombre, tecnico_nombre, tipo_plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada, encargado_nombre, firma_path, certificado_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada, encargado_nombre, firma_path, certificado_path))
     conn.commit()
     conn.close()
 
@@ -1907,13 +1911,19 @@ def vista_tecnico():
             estatus = st.selectbox("Estatus del Servicio", ["Completado", "En Proceso", "Seguimiento Requerido"], key="estatus_servicio")
             tecnico = st.text_input("Técnico Responsable", value=st.session_state.user['nombre'], key="tecnico_servicio")
             evidencia = st.file_uploader("Subir Evidencia Fotográfica", type=["jpg", "png", "jpeg"], key="evidencia_servicio")
+            certificado = st.file_uploader(
+                "Subir Certificado de Fumigación (opcional)",
+                type=["pdf", "jpg", "png", "jpeg"],
+                key="certificado_servicio",
+                help="Puedes anexar una copia escaneada o fotografiada del certificado emitido para este servicio."
+            )
 
         st.markdown("---")
         st.markdown("#### ✍️ Conformidad del Encargado")
 
         encargado_nombre = st.text_input(
             "Nombre del Encargado que recibe el servicio",
-            placeholder="Nombre Del Encargado",
+            placeholder="Ej. María López",
             key="encargado_nombre_servicio"
         )
 
@@ -1958,6 +1968,13 @@ def vista_tecnico():
                     with open(path_img, "wb") as f:
                         f.write(evidencia.getbuffer())
 
+                path_certificado = ""
+                if certificado:
+                    nombre_cert_unico = f"cert_{datetime.now().strftime('%Y%m%d%H%M%S')}_{certificado.name}"
+                    path_certificado = os.path.join("uploads", nombre_cert_unico)
+                    with open(path_certificado, "wb") as f:
+                        f.write(certificado.getbuffer())
+
                 path_firma = ""
                 if CANVAS_DISPONIBLE and PIL_DISPONIBLE and firma_array is not None and firma_array[:, :, 3].any():
                     nombre_firma = f"firma_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
@@ -1968,7 +1985,7 @@ def vista_tecnico():
                 guardar_reporte(
                     cliente, tecnico, plaga, tratamiento, estatus, path_img,
                     nivel_calculado, int(cantidad_observada),
-                    encargado_nombre.strip(), path_firma
+                    encargado_nombre.strip(), path_firma, path_certificado
                 )
                 st.success(f"✅ Servicio registrado correctamente. Nivel de infestación asignado: **{nivel_calculado}** ({int(cantidad_observada)} plagas observadas).")
                 st.session_state.firma_reset_count = st.session_state.get("firma_reset_count", 0) + 1
@@ -2041,7 +2058,7 @@ def vista_tecnico():
         st.subheader("📊 Historial General de Reportes")
         reportes = obtener_todos_reportes()
         if reportes:
-            df_rep = pd.DataFrame(reportes, columns=["ID", "Cliente", "Técnico", "Plaga", "Tratamiento", "Estatus", "Fecha", "Evidencia", "Nivel Infestación", "Cantidad Observada", "Encargado", "Firma"])
+            df_rep = pd.DataFrame(reportes, columns=["ID", "Cliente", "Técnico", "Plaga", "Tratamiento", "Estatus", "Fecha", "Evidencia", "Nivel Infestación", "Cantidad Observada", "Encargado", "Firma", "Certificado"])
             st.dataframe(df_rep, use_container_width=True)
         else:
             st.info("No hay servicios registrados en el historial.")
@@ -2079,13 +2096,21 @@ def vista_cliente():
         
         if reportes:
             for rep in reportes:
-                _, cliente, tecnico, plaga, tratamiento, estatus, fecha, evidencia, *_resto = rep
+                _, cliente, tecnico, plaga, tratamiento, estatus, fecha, evidencia, nivel_infestacion, cantidad_observada, encargado_nombre, firma_path, certificado_path = rep
                 with st.expander(f"Servicio: {plaga} - Fecha: {fecha} [{estatus}]"):
                     st.write(f"**Técnico Asignado:** {tecnico}")
                     st.write(f"**Tratamiento:** {tratamiento}")
                     st.write(f"**Estatus:** {estatus}")
                     if evidencia and os.path.exists(evidencia):
                         st.image(evidencia, width=300, caption="Evidencia del servicio")
+                    if certificado_path and os.path.exists(certificado_path):
+                        with open(certificado_path, "rb") as f:
+                            st.download_button(
+                                "📄 Descargar Certificado de Fumigación",
+                                data=f.read(),
+                                file_name=os.path.basename(certificado_path),
+                                key=f"descarga_cert_{fecha}_{plaga}"
+                            )
         else:
             st.info("Aún no cuentas con reportes de servicio registrados a tu nombre.")
 
