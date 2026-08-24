@@ -3,3 +3,4 @@ psycopg2-binary
 pandas
 pillow
 streamlit-drawable-canvas
+cloudinary
