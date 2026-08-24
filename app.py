@@ -7,6 +7,18 @@ from datetime import datetime
 import pandas as pd
 import streamlit.components.v1 as components
 
+try:
+    from streamlit_drawable_canvas import st_canvas
+    CANVAS_DISPONIBLE = True
+except ImportError:
+    CANVAS_DISPONIBLE = False
+
+try:
+    from PIL import Image
+    PIL_DISPONIBLE = True
+except ImportError:
+    PIL_DISPONIBLE = False
+
 # =============================================================================
 # 1. CONFIGURACIÓN DE LA PÁGINA Y BD
 # =============================================================================
@@ -160,6 +172,14 @@ def init_db():
         pass
     try:
         c.execute("ALTER TABLE reportes ADD COLUMN cantidad_observada INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE reportes ADD COLUMN encargado_nombre TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE reportes ADD COLUMN firma_path TEXT")
     except sqlite3.OperationalError:
         pass
     c.execute('''
@@ -388,13 +408,13 @@ def clasificar_nivel_infestacion(cantidad, tipo_establecimiento="Vivienda"):
             return nivel
     return rangos[-1][0] if rangos else "Baja"
 
-def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion="Media", cantidad_observada=0):
+def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion="Media", cantidad_observada=0, encargado_nombre="", firma_path=""):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute('''
-        INSERT INTO reportes(cliente_nombre, tecnico_nombre, tipo_plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada))
+        INSERT INTO reportes(cliente_nombre, tecnico_nombre, tipo_plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada, encargado_nombre, firma_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada, encargado_nombre, firma_path))
     conn.commit()
     conn.close()
 
@@ -1872,35 +1892,87 @@ def vista_tecnico():
                 rango_texto = f"{minimo} a {maximo}" if maximo else f"Más de {minimo - 1}"
                 st.markdown(f"**{icono} {nivel}** ({rango_texto}): {descripcion}")
             st.caption("Cambia el tipo de establecimiento de este cliente desde '👥 Gestión Clientes' → editar, o ajusta los rangos en '⚙️ Configurar Rangos'.")
-        
-        with st.form("registro_fumigacion", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            with col1:
-                plaga = st.text_input("Tipo de Plaga", placeholder="Ej. Cucaracha alemana, Roedores")
-                tratamiento = st.text_area("Tratamiento Aplicado / Productos", placeholder="Ej. Aplicación de gel específico y aspersión perimetral.")
-                cantidad_observada = st.number_input(
-                    "Cantidad de Plagas Observadas",
-                    min_value=0, step=1, value=0,
-                    help=f"Se clasificará según los rangos de '{tipo_cliente}' mostrados arriba."
-                )
-            with col2:
-                estatus = st.selectbox("Estatus del Servicio", ["Completado", "En Proceso", "Seguimiento Requerido"])
-                tecnico = st.text_input("Técnico Responsable", value=st.session_state.user['nombre'])
-                evidencia = st.file_uploader("Subir Evidencia Fotográfica", type=["jpg", "png", "jpeg"])
-            
-            submit_serv = st.form_submit_button("Guardar Reporte de Servicio", type="primary", use_container_width=True)
-            
-            if submit_serv:
+
+        col1, col2 = st.columns(2)
+        with col1:
+            plaga = st.text_input("Tipo de Plaga", placeholder="Ej. Cucaracha alemana, Roedores", key="plaga_servicio")
+            tratamiento = st.text_area("Tratamiento Aplicado / Productos", placeholder="Ej. Aplicación de gel específico y aspersión perimetral.", key="tratamiento_servicio")
+            cantidad_observada = st.number_input(
+                "Cantidad de Plagas Observadas",
+                min_value=0, step=1, value=0,
+                help=f"Se clasificará según los rangos de '{tipo_cliente}' mostrados arriba.",
+                key="cantidad_servicio"
+            )
+        with col2:
+            estatus = st.selectbox("Estatus del Servicio", ["Completado", "En Proceso", "Seguimiento Requerido"], key="estatus_servicio")
+            tecnico = st.text_input("Técnico Responsable", value=st.session_state.user['nombre'], key="tecnico_servicio")
+            evidencia = st.file_uploader("Subir Evidencia Fotográfica", type=["jpg", "png", "jpeg"], key="evidencia_servicio")
+
+        st.markdown("---")
+        st.markdown("#### ✍️ Conformidad del Encargado")
+
+        encargado_nombre = st.text_input(
+            "Nombre del Encargado que recibe el servicio",
+            placeholder="Ej. María López",
+            key="encargado_nombre_servicio"
+        )
+
+        firma_array = None
+        if CANVAS_DISPONIBLE:
+            st.caption("Debajo, pide al encargado que firme con el mouse o el dedo (pantalla táctil) para confirmar el servicio.")
+            if "firma_reset_count" not in st.session_state:
+                st.session_state.firma_reset_count = 0
+
+            canvas_result = st_canvas(
+                fill_color="rgba(255, 255, 255, 0)",
+                stroke_width=3,
+                stroke_color="#000000",
+                background_color="#ffffff",
+                height=180,
+                width=500,
+                drawing_mode="freedraw",
+                key=f"canvas_firma_servicio_{st.session_state.firma_reset_count}",
+            )
+            if canvas_result is not None:
+                firma_array = canvas_result.image_data
+
+            if st.button("🧹 Limpiar Firma", key="btn_limpiar_firma"):
+                st.session_state.firma_reset_count += 1
+                st.rerun()
+        else:
+            st.warning("⚠️ Para habilitar la firma digital instala el paquete `streamlit-drawable-canvas` (pip install streamlit-drawable-canvas) y reinicia la app.")
+
+        st.markdown("---")
+        submit_serv = st.button("Guardar Reporte de Servicio", type="primary", use_container_width=True, key="btn_guardar_servicio")
+
+        if submit_serv:
+            if not encargado_nombre.strip():
+                st.warning("⚠️ Debes indicar el nombre del encargado que firma la conformidad del servicio.")
+            elif CANVAS_DISPONIBLE and (firma_array is None or not firma_array[:, :, 3].any()):
+                st.warning("⚠️ Falta la firma del encargado. Pide que firme dentro del recuadro.")
+            else:
                 path_img = ""
                 if evidencia:
                     nombre_unico = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{evidencia.name}"
                     path_img = os.path.join("uploads", nombre_unico)
                     with open(path_img, "wb") as f:
                         f.write(evidencia.getbuffer())
-                
+
+                path_firma = ""
+                if CANVAS_DISPONIBLE and PIL_DISPONIBLE and firma_array is not None and firma_array[:, :, 3].any():
+                    nombre_firma = f"firma_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
+                    path_firma = os.path.join("uploads", nombre_firma)
+                    Image.fromarray(firma_array.astype("uint8"), "RGBA").save(path_firma)
+
                 nivel_calculado = clasificar_nivel_infestacion(int(cantidad_observada), tipo_cliente)
-                guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, path_img, nivel_calculado, int(cantidad_observada))
+                guardar_reporte(
+                    cliente, tecnico, plaga, tratamiento, estatus, path_img,
+                    nivel_calculado, int(cantidad_observada),
+                    encargado_nombre.strip(), path_firma
+                )
                 st.success(f"✅ Servicio registrado correctamente. Nivel de infestación asignado: **{nivel_calculado}** ({int(cantidad_observada)} plagas observadas).")
+                st.session_state.firma_reset_count = st.session_state.get("firma_reset_count", 0) + 1
+                st.rerun()
 
         st.markdown("---")
         mostrar_grafica_infestacion()
@@ -1969,7 +2041,7 @@ def vista_tecnico():
         st.subheader("📊 Historial General de Reportes")
         reportes = obtener_todos_reportes()
         if reportes:
-            df_rep = pd.DataFrame(reportes, columns=["ID", "Cliente", "Técnico", "Plaga", "Tratamiento", "Estatus", "Fecha", "Evidencia", "Nivel Infestación", "Cantidad Observada"])
+            df_rep = pd.DataFrame(reportes, columns=["ID", "Cliente", "Técnico", "Plaga", "Tratamiento", "Estatus", "Fecha", "Evidencia", "Nivel Infestación", "Cantidad Observada", "Encargado", "Firma"])
             st.dataframe(df_rep, use_container_width=True)
         else:
             st.info("No hay servicios registrados en el historial.")
