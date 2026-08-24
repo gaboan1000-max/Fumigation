@@ -182,6 +182,18 @@ def init_db():
         )
     ''')
     
+    # Migración automática si la tabla ya existía sin la columna
+    try:
+        if IS_POSTGRES:
+            run_query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS codigo_tecnico TEXT")
+        else:
+            # SQLite no soporta IF NOT EXISTS en ALTER TABLE
+            columnas = [col[1] for col in run_query("PRAGMA table_info(usuarios)", fetch="all")]
+            if "codigo_tecnico" not in columnas:
+                run_query("ALTER TABLE usuarios ADD COLUMN codigo_tecnico TEXT")
+    except Exception:
+        pass
+    
     run_query(f'''
         CREATE TABLE IF NOT EXISTS clientes_registrados (
             id {pk_def},
@@ -236,12 +248,12 @@ def init_db():
     total_rangos = run_query("SELECT COUNT(*) FROM rangos_infestacion", fetch="one")[0]
     if total_rangos == 0:
         rangos_default = [
-            ("Vivienda",              "Baja", 1, 10), ("Vivienda",              "Media", 11, 50), ("Vivienda",              "Alta", 51, None),
-            ("Hotel",                 "Baja", 1, 5),  ("Hotel",                 "Media", 6, 20),  ("Hotel",                 "Alta", 21, None),
-            ("Restaurante / Comercio","Baja", 1, 3),  ("Restaurante / Comercio","Media", 4, 15),  ("Restaurante / Comercio","Alta", 16, None),
-            ("Industria Alimentaria", "Baja", 1, 2),  ("Industria Alimentaria", "Media", 3, 10),  ("Industria Alimentaria", "Alta", 11, None),
-            ("Hospital / Escuela",    "Baja", 1, 5),  ("Hospital / Escuela",    "Media", 6, 20),  ("Hospital / Escuela",    "Alta", 21, None),
-            ("Oficina / Bodega",      "Baja", 1, 10), ("Oficina / Bodega",      "Media", 11, 40), ("Oficina / Bodega",      "Alta", 41, None),
+            ("Vivienda",               "Baja", 1, 10), ("Vivienda",               "Media", 11, 50), ("Vivienda",               "Alta", 51, None),
+            ("Hotel",                  "Baja", 1, 5),  ("Hotel",                  "Media", 6, 20),  ("Hotel",                  "Alta", 21, None),
+            ("Restaurante / Comercio", "Baja", 1, 3),  ("Restaurante / Comercio", "Media", 4, 15),  ("Restaurante / Comercio", "Alta", 16, None),
+            ("Industria Alimentaria",  "Baja", 1, 2),  ("Industria Alimentaria",  "Media", 3, 10),  ("Industria Alimentaria",  "Alta", 11, None),
+            ("Hospital / Escuela",     "Baja", 1, 5),  ("Hospital / Escuela",     "Media", 6, 20),  ("Hospital / Escuela",     "Alta", 21, None),
+            ("Oficina / Bodega",       "Baja", 1, 10), ("Oficina / Bodega",       "Media", 11, 40), ("Oficina / Bodega",       "Alta", 41, None),
         ]
         for r in rangos_default:
             run_query(
