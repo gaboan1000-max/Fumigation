@@ -1945,7 +1945,7 @@ def vista_tecnico():
 
         encargado_nombre = st.text_input(
             "Nombre del Encargado que recibe el servicio",
-            placeholder="Nombre Del Encargado",
+            placeholder="Ej. María López",
             key="encargado_nombre_servicio"
         )
 
