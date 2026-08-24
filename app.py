@@ -19,12 +19,6 @@ try:
 except ImportError:
     PIL_DISPONIBLE = False
 
-try:
-    import libsql_experimental as libsql
-    LIBSQL_DISPONIBLE = True
-except ImportError:
-    LIBSQL_DISPONIBLE = False
-
 # =============================================================================
 # 1. CONFIGURACIÓN DE LA PÁGINA Y BD
 # =============================================================================
@@ -38,27 +32,6 @@ st.set_page_config(
 )
 
 DB_NAME = "fumigaciones.db"
-
-def obtener_conexion():
-    """
-    Devuelve una conexión a la base de datos.
-    - Si en Streamlit Secrets están configuradas TURSO_DATABASE_URL y TURSO_AUTH_TOKEN,
-      se conecta a Turso (persiste entre despliegues/reinicios).
-    - Si no, usa el archivo local fumigaciones.db (⚠️ en Streamlit Community Cloud
-      este archivo se borra cada vez que la app se reinicia o se actualiza el código).
-    """
-    turso_url = None
-    turso_token = None
-    try:
-        turso_url = st.secrets.get("TURSO_DATABASE_URL")
-        turso_token = st.secrets.get("TURSO_AUTH_TOKEN")
-    except Exception:
-        pass
-
-    if LIBSQL_DISPONIBLE and turso_url and turso_token:
-        return libsql.connect(turso_url, auth_token=turso_token)
-
-    return obtener_conexion()
 
 # =============================================================================
 # TÉRMINOS Y CONDICIONES DE USO
@@ -144,7 +117,7 @@ def _generar_codigo_aleatorio(longitud=6):
     return "".join(random.choice(_CODIGO_ALFABETO) for _ in range(longitud))
 
 def init_db():
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
@@ -158,11 +131,11 @@ def init_db():
     ''')
     try:
         c.execute("ALTER TABLE usuarios ADD COLUMN salt TEXT")
-    except Exception:
+    except sqlite3.OperationalError:
         pass
     try:
         c.execute("ALTER TABLE usuarios ADD COLUMN codigo_tecnico TEXT")
-    except Exception:
+    except sqlite3.OperationalError:
         pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS clientes_registrados (
@@ -175,11 +148,11 @@ def init_db():
     ''')
     try:
         c.execute("ALTER TABLE clientes_registrados ADD COLUMN tecnico_asignado TEXT")
-    except Exception:
+    except sqlite3.OperationalError:
         pass
     try:
         c.execute("ALTER TABLE clientes_registrados ADD COLUMN tipo_establecimiento TEXT DEFAULT 'Vivienda'")
-    except Exception:
+    except sqlite3.OperationalError:
         pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS reportes (
@@ -195,23 +168,23 @@ def init_db():
     ''')
     try:
         c.execute("ALTER TABLE reportes ADD COLUMN nivel_infestacion TEXT DEFAULT 'Media'")
-    except Exception:
+    except sqlite3.OperationalError:
         pass
     try:
         c.execute("ALTER TABLE reportes ADD COLUMN cantidad_observada INTEGER DEFAULT 0")
-    except Exception:
+    except sqlite3.OperationalError:
         pass
     try:
         c.execute("ALTER TABLE reportes ADD COLUMN encargado_nombre TEXT")
-    except Exception:
+    except sqlite3.OperationalError:
         pass
     try:
         c.execute("ALTER TABLE reportes ADD COLUMN firma_path TEXT")
-    except Exception:
+    except sqlite3.OperationalError:
         pass
     try:
         c.execute("ALTER TABLE reportes ADD COLUMN certificado_path TEXT")
-    except Exception:
+    except sqlite3.OperationalError:
         pass
     c.execute('''
         CREATE TABLE IF NOT EXISTS mensajes (
@@ -270,7 +243,7 @@ if not os.path.exists("uploads"):
 # 2. FUNCIONES DE BASE DE DATOS
 # =============================================================================
 def obtener_tecnico_por_codigo(codigo):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
         "SELECT nombre FROM usuarios WHERE codigo_tecnico = ? AND rol = 'Técnico'",
@@ -281,7 +254,7 @@ def obtener_tecnico_por_codigo(codigo):
     return fila[0] if fila else None
 
 def obtener_codigo_tecnico(correo_tecnico):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("SELECT codigo_tecnico FROM usuarios WHERE correo = ?", (correo_tecnico.strip().lower(),))
     fila = c.fetchone()
@@ -289,7 +262,7 @@ def obtener_codigo_tecnico(correo_tecnico):
     return fila[0] if fila else None
 
 def generar_codigo_tecnico(correo_tecnico):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     while True:
         codigo = _generar_codigo_aleatorio()
@@ -306,7 +279,7 @@ def generar_codigo_tecnico(correo_tecnico):
     return codigo if filas_afectadas > 0 else None
 
 def agregar_usuario(nombre, correo, password, rol, telefono, codigo_tecnico_ingresado=""):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     try:
         tecnico_asignado = None
@@ -327,13 +300,13 @@ def agregar_usuario(nombre, correo, password, rol, telefono, codigo_tecnico_ingr
             agregar_cliente_db(nombre.strip(), nombre.strip(), telefono.strip(), "", tecnico_asignado)
 
         return "ok"
-    except Exception:
+    except sqlite3.IntegrityError:
         return "email_duplicado"
     finally:
         conn.close()
 
 def login_usuario(correo, password):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("SELECT * FROM usuarios WHERE correo = ?", (correo.strip().lower(),))
     data = c.fetchone()
@@ -347,7 +320,7 @@ def login_usuario(correo, password):
 TIPOS_ESTABLECIMIENTO = ["Vivienda", "Hotel", "Restaurante / Comercio", "Industria Alimentaria", "Hospital / Escuela", "Oficina / Bodega"]
 
 def agregar_cliente_db(nombre_local, responsable, telefono, direccion, tecnico_asignado=None, tipo_establecimiento="Vivienda"):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     try:
         c.execute(
@@ -356,13 +329,13 @@ def agregar_cliente_db(nombre_local, responsable, telefono, direccion, tecnico_a
         )
         conn.commit()
         return True
-    except Exception:
+    except sqlite3.IntegrityError:
         return False
     finally:
         conn.close()
 
 def obtener_tipo_establecimiento(nombre_cliente):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
         "SELECT tipo_establecimiento FROM clientes_registrados WHERE nombre_local = ? COLLATE NOCASE",
@@ -373,7 +346,7 @@ def obtener_tipo_establecimiento(nombre_cliente):
     return fila[0] if fila and fila[0] else "Vivienda"
 
 def obtener_lista_clientes():
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("SELECT nombre_local FROM clientes_registrados")
     locales = [row[0] for row in c.fetchall()]
@@ -383,7 +356,7 @@ def obtener_lista_clientes():
     return sorted(list(set(locales + usuarios_clientes)))
 
 def obtener_todos_clientes_detalle():
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("SELECT * FROM clientes_registrados ORDER BY nombre_local ASC")
     datos = c.fetchall()
@@ -391,7 +364,7 @@ def obtener_todos_clientes_detalle():
     return datos
 
 def obtener_contactos_disponibles(mi_nombre):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("SELECT nombre, rol FROM usuarios WHERE nombre != ?", (mi_nombre,))
     contactos = c.fetchall()
@@ -406,7 +379,7 @@ DESCRIPCION_NIVEL = {
 
 def obtener_rangos_por_tipo(tipo_establecimiento):
     """Devuelve [(nivel, minimo, maximo), ...] ordenados Baja/Media/Alta para ese tipo de establecimiento."""
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
         "SELECT nivel, minimo, maximo FROM rangos_infestacion WHERE tipo_establecimiento = ?",
@@ -418,7 +391,7 @@ def obtener_rangos_por_tipo(tipo_establecimiento):
     return [(nivel, filas[nivel][0], filas[nivel][1]) for nivel in orden if nivel in filas]
 
 def actualizar_rango(tipo_establecimiento, nivel, minimo, maximo):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
         "UPDATE rangos_infestacion SET minimo = ?, maximo = ? WHERE tipo_establecimiento = ? AND nivel = ?",
@@ -440,7 +413,7 @@ def clasificar_nivel_infestacion(cantidad, tipo_establecimiento="Vivienda"):
     return rangos[-1][0] if rangos else "Baja"
 
 def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion="Media", cantidad_observada=0, encargado_nombre="", firma_path="", certificado_path=""):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute('''
         INSERT INTO reportes(cliente_nombre, tecnico_nombre, tipo_plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada, encargado_nombre, firma_path, certificado_path)
@@ -450,7 +423,7 @@ def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_pat
     conn.close()
 
 def obtener_reportes_cliente(nombre_cliente):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
         "SELECT * FROM reportes WHERE cliente_nombre = ? COLLATE NOCASE ORDER BY fecha DESC",
@@ -461,7 +434,7 @@ def obtener_reportes_cliente(nombre_cliente):
     return datos
 
 def obtener_todos_reportes():
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("SELECT * FROM reportes ORDER BY fecha DESC")
     datos = c.fetchall()
@@ -471,7 +444,7 @@ def obtener_todos_reportes():
 def obtener_infestacion_por_mes(anio, cliente=None):
     """Devuelve el conteo de reportes por mes y nivel de infestación (Baja/Media/Alta) para el año indicado.
     Si se pasa 'cliente', solo cuenta los reportes de ese cliente."""
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     if cliente:
         c.execute('''
@@ -492,7 +465,7 @@ def obtener_infestacion_por_mes(anio, cliente=None):
     return datos
 
 def obtener_anios_disponibles(cliente=None):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     if cliente:
         c.execute("SELECT DISTINCT strftime('%Y', fecha) FROM reportes WHERE cliente_nombre = ? COLLATE NOCASE ORDER BY 1 DESC", (cliente,))
@@ -503,14 +476,14 @@ def obtener_anios_disponibles(cliente=None):
     return anios
 
 def enviar_mensaje_db(remitente, destinatario, texto):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("INSERT INTO mensajes(remitente, destinatario, mensaje) VALUES (?,?,?)", (remitente, destinatario, texto))
     conn.commit()
     conn.close()
 
 def obtener_conversacion(user1, user2):
-    conn = obtener_conexion()
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute('''
         SELECT remitente, destinatario, mensaje, fecha 
