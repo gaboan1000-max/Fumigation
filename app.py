@@ -6,15 +6,6 @@ import random
 from datetime import datetime
 import pandas as pd
 import streamlit.components.v1 as components
-import urllib.parse
-
-# Driver de PostgreSQL para Railway
-try:
-    import psycopg2
-    import psycopg2.extras
-    PSYCOPG2_DISPONIBLE = True
-except ImportError:
-    PSYCOPG2_DISPONIBLE = False
 
 try:
     from streamlit_drawable_canvas import st_canvas
@@ -40,49 +31,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Detectar si estamos en Railway con PostgreSQL o en local con SQLite
-DATABASE_URL = os.getenv("DATABASE_URL")
-IS_POSTGRES = bool(DATABASE_URL and PSYCOPG2_DISPONIBLE)
 DB_NAME = "fumigaciones.db"
-
-def get_connection():
-    """Devuelve la conexión y un flag indicando si es Postgres o SQLite."""
-    if IS_POSTGRES:
-        conn = psycopg2.connect(DATABASE_URL)
-        return conn, True
-    conn = sqlite3.connect(DB_NAME)
-    return conn, False
-
-def run_query(query, params=(), fetch=None):
-    """
-    Ejecutor agnóstico de consultas que traduce sintaxis entre PostgreSQL y SQLite.
-    fetch: None, 'one', 'all', 'rowcount'
-    """
-    conn, is_pg = get_connection()
-    c = conn.cursor()
-    
-    # Adaptar placeholders
-    if is_pg:
-        query = query.replace("?", "%s")
-    
-    try:
-        c.execute(query, params)
-        if fetch == "one":
-            res = c.fetchone()
-        elif fetch == "all":
-            res = c.fetchall()
-        elif fetch == "rowcount":
-            res = c.rowcount
-        else:
-            res = None
-        conn.commit()
-        return res
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        c.close()
-        conn.close()
 
 # =============================================================================
 # TÉRMINOS Y CONDICIONES DE USO
@@ -161,80 +110,92 @@ def mostrar_terminos_condiciones():
                 st.session_state.terminos_aceptados = True
                 st.rerun()
 
+# Alfabeto sin 0/O/1/I/L para evitar confusiones al dictar o leer el código.
 _CODIGO_ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
 def _generar_codigo_aleatorio(longitud=6):
     return "".join(random.choice(_CODIGO_ALFABETO) for _ in range(longitud))
 
 def init_db():
-    pk_def = "SERIAL PRIMARY KEY" if IS_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
-    
-    run_query(f'''
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
-            id {pk_def},
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
             correo TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             rol TEXT NOT NULL,
-            telefono TEXT,
-            salt TEXT,
-            codigo_tecnico TEXT
+            telefono TEXT
         )
     ''')
-    
-    # Migración automática si la tabla ya existía sin la columna
     try:
-        if IS_POSTGRES:
-            run_query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS codigo_tecnico TEXT")
-        else:
-            # SQLite no soporta IF NOT EXISTS en ALTER TABLE
-            columnas = [col[1] for col in run_query("PRAGMA table_info(usuarios)", fetch="all")]
-            if "codigo_tecnico" not in columnas:
-                run_query("ALTER TABLE usuarios ADD COLUMN codigo_tecnico TEXT")
-    except Exception:
+        c.execute("ALTER TABLE usuarios ADD COLUMN salt TEXT")
+    except sqlite3.OperationalError:
         pass
-    
-    run_query(f'''
+    try:
+        c.execute("ALTER TABLE usuarios ADD COLUMN codigo_tecnico TEXT")
+    except sqlite3.OperationalError:
+        pass
+    c.execute('''
         CREATE TABLE IF NOT EXISTS clientes_registrados (
-            id {pk_def},
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre_local TEXT UNIQUE NOT NULL,
             responsable TEXT,
             telefono TEXT,
-            direccion TEXT,
-            tecnico_asignado TEXT,
-            tipo_establecimiento TEXT DEFAULT 'Vivienda'
+            direccion TEXT
         )
     ''')
-
-    run_query(f'''
+    try:
+        c.execute("ALTER TABLE clientes_registrados ADD COLUMN tecnico_asignado TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE clientes_registrados ADD COLUMN tipo_establecimiento TEXT DEFAULT 'Vivienda'")
+    except sqlite3.OperationalError:
+        pass
+    c.execute('''
         CREATE TABLE IF NOT EXISTS reportes (
-            id {pk_def},
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             cliente_nombre TEXT NOT NULL,
             tecnico_nombre TEXT NOT NULL,
             tipo_plaga TEXT NOT NULL,
             tratamiento TEXT NOT NULL,
             estatus TEXT DEFAULT 'Completado',
             fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            evidencia_path TEXT,
-            nivel_infestacion TEXT DEFAULT 'Media',
-            cantidad_observada INTEGER DEFAULT 0,
-            encargado_nombre TEXT,
-            firma_path TEXT,
-            certificado_path TEXT
+            evidencia_path TEXT
         )
     ''')
-
-    run_query(f'''
+    try:
+        c.execute("ALTER TABLE reportes ADD COLUMN nivel_infestacion TEXT DEFAULT 'Media'")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE reportes ADD COLUMN cantidad_observada INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE reportes ADD COLUMN encargado_nombre TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE reportes ADD COLUMN firma_path TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE reportes ADD COLUMN certificado_path TEXT")
+    except sqlite3.OperationalError:
+        pass
+    c.execute('''
         CREATE TABLE IF NOT EXISTS mensajes (
-            id {pk_def},
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             remitente TEXT NOT NULL,
             destinatario TEXT NOT NULL,
             mensaje TEXT NOT NULL,
             fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-
-    run_query('''
+    c.execute('''
         CREATE TABLE IF NOT EXISTS rangos_infestacion (
             tipo_establecimiento TEXT NOT NULL,
             nivel TEXT NOT NULL,
@@ -243,23 +204,24 @@ def init_db():
             PRIMARY KEY (tipo_establecimiento, nivel)
         )
     ''')
-
-    # Sembrar rangos por defecto
-    total_rangos = run_query("SELECT COUNT(*) FROM rangos_infestacion", fetch="one")[0]
-    if total_rangos == 0:
+    # Sembrar rangos por defecto solo si la tabla está vacía (no pisa ajustes ya hechos por el técnico)
+    c.execute("SELECT COUNT(*) FROM rangos_infestacion")
+    if c.fetchone()[0] == 0:
         rangos_default = [
-            ("Vivienda",               "Baja", 1, 10), ("Vivienda",               "Media", 11, 50), ("Vivienda",               "Alta", 51, None),
-            ("Hotel",                  "Baja", 1, 5),  ("Hotel",                  "Media", 6, 20),  ("Hotel",                  "Alta", 21, None),
-            ("Restaurante / Comercio", "Baja", 1, 3),  ("Restaurante / Comercio", "Media", 4, 15),  ("Restaurante / Comercio", "Alta", 16, None),
-            ("Industria Alimentaria",  "Baja", 1, 2),  ("Industria Alimentaria",  "Media", 3, 10),  ("Industria Alimentaria",  "Alta", 11, None),
-            ("Hospital / Escuela",     "Baja", 1, 5),  ("Hospital / Escuela",     "Media", 6, 20),  ("Hospital / Escuela",     "Alta", 21, None),
-            ("Oficina / Bodega",       "Baja", 1, 10), ("Oficina / Bodega",       "Media", 11, 40), ("Oficina / Bodega",       "Alta", 41, None),
+            # tipo_establecimiento, nivel, minimo, maximo (None = sin tope)
+            ("Vivienda",              "Baja", 1, 10), ("Vivienda",              "Media", 11, 50), ("Vivienda",              "Alta", 51, None),
+            ("Hotel",                 "Baja", 1, 5),  ("Hotel",                 "Media", 6, 20),  ("Hotel",                 "Alta", 21, None),
+            ("Restaurante / Comercio","Baja", 1, 3),  ("Restaurante / Comercio","Media", 4, 15),  ("Restaurante / Comercio","Alta", 16, None),
+            ("Industria Alimentaria", "Baja", 1, 2),  ("Industria Alimentaria", "Media", 3, 10),  ("Industria Alimentaria", "Alta", 11, None),
+            ("Hospital / Escuela",    "Baja", 1, 5),  ("Hospital / Escuela",    "Media", 6, 20),  ("Hospital / Escuela",    "Alta", 21, None),
+            ("Oficina / Bodega",      "Baja", 1, 10), ("Oficina / Bodega",      "Media", 11, 40), ("Oficina / Bodega",      "Alta", 41, None),
         ]
-        for r in rangos_default:
-            run_query(
-                "INSERT INTO rangos_infestacion(tipo_establecimiento, nivel, minimo, maximo) VALUES (?,?,?,?)",
-                r
-            )
+        c.executemany(
+            "INSERT INTO rangos_infestacion(tipo_establecimiento, nivel, minimo, maximo) VALUES (?,?,?,?)",
+            rangos_default
+        )
+    conn.commit()
+    conn.close()
 
 def generar_salt():
     return os.urandom(16).hex()
@@ -281,32 +243,44 @@ if not os.path.exists("uploads"):
 # 2. FUNCIONES DE BASE DE DATOS
 # =============================================================================
 def obtener_tecnico_por_codigo(codigo):
-    fila = run_query(
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
         "SELECT nombre FROM usuarios WHERE codigo_tecnico = ? AND rol = 'Técnico'",
-        (codigo.strip().upper(),), fetch="one"
+        (codigo.strip().upper(),)
     )
+    fila = c.fetchone()
+    conn.close()
     return fila[0] if fila else None
 
 def obtener_codigo_tecnico(correo_tecnico):
-    fila = run_query(
-        "SELECT codigo_tecnico FROM usuarios WHERE correo = ?",
-        (correo_tecnico.strip().lower(),), fetch="one"
-    )
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT codigo_tecnico FROM usuarios WHERE correo = ?", (correo_tecnico.strip().lower(),))
+    fila = c.fetchone()
+    conn.close()
     return fila[0] if fila else None
 
 def generar_codigo_tecnico(correo_tecnico):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
     while True:
         codigo = _generar_codigo_aleatorio()
-        existe = run_query("SELECT 1 FROM usuarios WHERE codigo_tecnico = ?", (codigo,), fetch="one")
-        if not existe:
+        c.execute("SELECT 1 FROM usuarios WHERE codigo_tecnico = ?", (codigo,))
+        if not c.fetchone():
             break
-    afectadas = run_query(
+    c.execute(
         "UPDATE usuarios SET codigo_tecnico = ? WHERE correo = ?",
-        (codigo, correo_tecnico.strip().lower()), fetch="rowcount"
+        (codigo, correo_tecnico.strip().lower())
     )
-    return codigo if afectadas and afectadas > 0 else None
+    filas_afectadas = c.rowcount
+    conn.commit()
+    conn.close()
+    return codigo if filas_afectadas > 0 else None
 
 def agregar_usuario(nombre, correo, password, rol, telefono, codigo_tecnico_ingresado=""):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
     try:
         tecnico_asignado = None
         if rol == "Cliente" and codigo_tecnico_ingresado.strip():
@@ -316,19 +290,27 @@ def agregar_usuario(nombre, correo, password, rol, telefono, codigo_tecnico_ingr
 
         salt = generar_salt()
         hashed = make_hashes(password, salt)
-        run_query(
+        c.execute(
             "INSERT INTO usuarios(nombre, correo, password, rol, telefono, salt) VALUES (?,?,?,?,?,?)",
             (nombre.strip(), correo.strip().lower(), hashed, rol, telefono.strip(), salt)
         )
+        conn.commit()
+
         if tecnico_asignado:
             agregar_cliente_db(nombre.strip(), nombre.strip(), telefono.strip(), "", tecnico_asignado)
 
         return "ok"
-    except Exception:
+    except sqlite3.IntegrityError:
         return "email_duplicado"
+    finally:
+        conn.close()
 
 def login_usuario(correo, password):
-    data = run_query("SELECT * FROM usuarios WHERE correo = ?", (correo.strip().lower(),), fetch="one")
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT * FROM usuarios WHERE correo = ?", (correo.strip().lower(),))
+    data = c.fetchone()
+    conn.close()
     if data:
         salt = data[6] if len(data) > 6 else None
         if check_hashes(password, salt, data[3]):
@@ -338,30 +320,56 @@ def login_usuario(correo, password):
 TIPOS_ESTABLECIMIENTO = ["Vivienda", "Hotel", "Restaurante / Comercio", "Industria Alimentaria", "Hospital / Escuela", "Oficina / Bodega"]
 
 def agregar_cliente_db(nombre_local, responsable, telefono, direccion, tecnico_asignado=None, tipo_establecimiento="Vivienda"):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
     try:
-        run_query(
+        c.execute(
             "INSERT INTO clientes_registrados(nombre_local, responsable, telefono, direccion, tecnico_asignado, tipo_establecimiento) VALUES (?,?,?,?,?,?)",
             (nombre_local.strip(), responsable.strip(), telefono.strip(), direccion.strip(), tecnico_asignado, tipo_establecimiento)
         )
+        conn.commit()
         return True
-    except Exception:
+    except sqlite3.IntegrityError:
         return False
+    finally:
+        conn.close()
 
 def obtener_tipo_establecimiento(nombre_cliente):
-    query = "SELECT tipo_establecimiento FROM clientes_registrados WHERE LOWER(nombre_local) = LOWER(?)"
-    fila = run_query(query, (nombre_cliente,), fetch="one")
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        "SELECT tipo_establecimiento FROM clientes_registrados WHERE nombre_local = ? COLLATE NOCASE",
+        (nombre_cliente,)
+    )
+    fila = c.fetchone()
+    conn.close()
     return fila[0] if fila and fila[0] else "Vivienda"
 
 def obtener_lista_clientes():
-    locales = [row[0] for row in run_query("SELECT nombre_local FROM clientes_registrados", fetch="all")]
-    usuarios_clientes = [row[0] for row in run_query("SELECT nombre FROM usuarios WHERE rol = 'Cliente'", fetch="all")]
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT nombre_local FROM clientes_registrados")
+    locales = [row[0] for row in c.fetchall()]
+    c.execute("SELECT nombre FROM usuarios WHERE rol = 'Cliente'")
+    usuarios_clientes = [row[0] for row in c.fetchall()]
+    conn.close()
     return sorted(list(set(locales + usuarios_clientes)))
 
 def obtener_todos_clientes_detalle():
-    return run_query("SELECT * FROM clientes_registrados ORDER BY nombre_local ASC", fetch="all")
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT * FROM clientes_registrados ORDER BY nombre_local ASC")
+    datos = c.fetchall()
+    conn.close()
+    return datos
 
 def obtener_contactos_disponibles(mi_nombre):
-    return run_query("SELECT nombre, rol FROM usuarios WHERE nombre != ?", (mi_nombre,), fetch="all")
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT nombre, rol FROM usuarios WHERE nombre != ?", (mi_nombre,))
+    contactos = c.fetchall()
+    conn.close()
+    return contactos
 
 DESCRIPCION_NIVEL = {
     "Baja": ("🟢", "Se observan pocos individuos o evidencia mínima de actividad. No representa una infestación generalizada."),
@@ -370,21 +378,30 @@ DESCRIPCION_NIVEL = {
 }
 
 def obtener_rangos_por_tipo(tipo_establecimiento):
-    filas_raw = run_query(
+    """Devuelve [(nivel, minimo, maximo), ...] ordenados Baja/Media/Alta para ese tipo de establecimiento."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
         "SELECT nivel, minimo, maximo FROM rangos_infestacion WHERE tipo_establecimiento = ?",
-        (tipo_establecimiento,), fetch="all"
+        (tipo_establecimiento,)
     )
-    filas = {nivel: (minimo, maximo) for nivel, minimo, maximo in filas_raw}
+    filas = {nivel: (minimo, maximo) for nivel, minimo, maximo in c.fetchall()}
+    conn.close()
     orden = ["Baja", "Media", "Alta"]
     return [(nivel, filas[nivel][0], filas[nivel][1]) for nivel in orden if nivel in filas]
 
 def actualizar_rango(tipo_establecimiento, nivel, minimo, maximo):
-    run_query(
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
         "UPDATE rangos_infestacion SET minimo = ?, maximo = ? WHERE tipo_establecimiento = ? AND nivel = ?",
         (minimo, maximo, tipo_establecimiento, nivel)
     )
+    conn.commit()
+    conn.close()
 
 def clasificar_nivel_infestacion(cantidad, tipo_establecimiento="Vivienda"):
+    """Clasifica la cantidad observada en Baja/Media/Alta según los rangos definidos para ese tipo de establecimiento."""
     rangos = obtener_rangos_por_tipo(tipo_establecimiento)
     if not rangos:
         rangos = obtener_rangos_por_tipo("Vivienda")
@@ -396,83 +413,87 @@ def clasificar_nivel_infestacion(cantidad, tipo_establecimiento="Vivienda"):
     return rangos[-1][0] if rangos else "Baja"
 
 def guardar_reporte(cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion="Media", cantidad_observada=0, encargado_nombre="", firma_path="", certificado_path=""):
-    run_query('''
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('''
         INSERT INTO reportes(cliente_nombre, tecnico_nombre, tipo_plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada, encargado_nombre, firma_path, certificado_path)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (cliente, tecnico, plaga, tratamiento, estatus, evidencia_path, nivel_infestacion, cantidad_observada, encargado_nombre, firma_path, certificado_path))
+    conn.commit()
+    conn.close()
 
 def obtener_reportes_cliente(nombre_cliente):
-    return run_query(
-        "SELECT * FROM reportes WHERE LOWER(cliente_nombre) = LOWER(?) ORDER BY fecha DESC",
-        (nombre_cliente,), fetch="all"
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        "SELECT * FROM reportes WHERE cliente_nombre = ? COLLATE NOCASE ORDER BY fecha DESC",
+        (nombre_cliente,)
     )
+    datos = c.fetchall()
+    conn.close()
+    return datos
 
 def obtener_todos_reportes():
-    return run_query("SELECT * FROM reportes ORDER BY fecha DESC", fetch="all")
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT * FROM reportes ORDER BY fecha DESC")
+    datos = c.fetchall()
+    conn.close()
+    return datos
 
 def obtener_infestacion_por_mes(anio, cliente=None):
-    if IS_POSTGRES:
-        if cliente:
-            q = '''
-                SELECT TO_CHAR(fecha, 'MM') AS mes, nivel_infestacion, COUNT(*) 
-                FROM reportes
-                WHERE TO_CHAR(fecha, 'YYYY') = ? AND LOWER(cliente_nombre) = LOWER(?)
-                GROUP BY mes, nivel_infestacion
-            '''
-            return run_query(q, (str(anio), cliente), fetch="all")
-        else:
-            q = '''
-                SELECT TO_CHAR(fecha, 'MM') AS mes, nivel_infestacion, COUNT(*) 
-                FROM reportes
-                WHERE TO_CHAR(fecha, 'YYYY') = ?
-                GROUP BY mes, nivel_infestacion
-            '''
-            return run_query(q, (str(anio),), fetch="all")
+    """Devuelve el conteo de reportes por mes y nivel de infestación (Baja/Media/Alta) para el año indicado.
+    Si se pasa 'cliente', solo cuenta los reportes de ese cliente."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    if cliente:
+        c.execute('''
+            SELECT strftime('%m', fecha) AS mes, nivel_infestacion, COUNT(*) 
+            FROM reportes
+            WHERE strftime('%Y', fecha) = ? AND cliente_nombre = ? COLLATE NOCASE
+            GROUP BY mes, nivel_infestacion
+        ''', (str(anio), cliente))
     else:
-        if cliente:
-            q = '''
-                SELECT strftime('%m', fecha) AS mes, nivel_infestacion, COUNT(*) 
-                FROM reportes
-                WHERE strftime('%Y', fecha) = ? AND LOWER(cliente_nombre) = LOWER(?)
-                GROUP BY mes, nivel_infestacion
-            '''
-            return run_query(q, (str(anio), cliente), fetch="all")
-        else:
-            q = '''
-                SELECT strftime('%m', fecha) AS mes, nivel_infestacion, COUNT(*) 
-                FROM reportes
-                WHERE strftime('%Y', fecha) = ?
-                GROUP BY mes, nivel_infestacion
-            '''
-            return run_query(q, (str(anio),), fetch="all")
+        c.execute('''
+            SELECT strftime('%m', fecha) AS mes, nivel_infestacion, COUNT(*) 
+            FROM reportes
+            WHERE strftime('%Y', fecha) = ?
+            GROUP BY mes, nivel_infestacion
+        ''', (str(anio),))
+    datos = c.fetchall()
+    conn.close()
+    return datos
 
 def obtener_anios_disponibles(cliente=None):
-    if IS_POSTGRES:
-        if cliente:
-            q = "SELECT DISTINCT TO_CHAR(fecha, 'YYYY') FROM reportes WHERE LOWER(cliente_nombre) = LOWER(?) ORDER BY 1 DESC"
-            filas = run_query(q, (cliente,), fetch="all")
-        else:
-            q = "SELECT DISTINCT TO_CHAR(fecha, 'YYYY') FROM reportes ORDER BY 1 DESC"
-            filas = run_query(q, fetch="all")
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    if cliente:
+        c.execute("SELECT DISTINCT strftime('%Y', fecha) FROM reportes WHERE cliente_nombre = ? COLLATE NOCASE ORDER BY 1 DESC", (cliente,))
     else:
-        if cliente:
-            q = "SELECT DISTINCT strftime('%Y', fecha) FROM reportes WHERE LOWER(cliente_nombre) = LOWER(?) ORDER BY 1 DESC"
-            filas = run_query(q, (cliente,), fetch="all")
-        else:
-            q = "SELECT DISTINCT strftime('%Y', fecha) FROM reportes ORDER BY 1 DESC"
-            filas = run_query(q, fetch="all")
-    return [row[0] for row in filas if row and row[0]]
+        c.execute("SELECT DISTINCT strftime('%Y', fecha) FROM reportes ORDER BY 1 DESC")
+    anios = [row[0] for row in c.fetchall() if row[0]]
+    conn.close()
+    return anios
 
 def enviar_mensaje_db(remitente, destinatario, texto):
-    run_query("INSERT INTO mensajes(remitente, destinatario, mensaje) VALUES (?,?,?)", (remitente, destinatario, texto))
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("INSERT INTO mensajes(remitente, destinatario, mensaje) VALUES (?,?,?)", (remitente, destinatario, texto))
+    conn.commit()
+    conn.close()
 
 def obtener_conversacion(user1, user2):
-    return run_query('''
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('''
         SELECT remitente, destinatario, mensaje, fecha 
         FROM mensajes 
         WHERE (remitente = ? AND destinatario = ?) OR (remitente = ? AND destinatario = ?)
         ORDER BY fecha ASC
-    ''', (user1, user2, user2, user1), fetch="all")
+    ''', (user1, user2, user2, user1))
+    msgs = c.fetchall()
+    conn.close()
+    return msgs
 
 # =============================================================================
 # 3. ESTILOS, ANIMACIONES CSS Y BOTONES PROFESIONALES
@@ -646,6 +667,7 @@ def mostrar_navegacion(opciones, session_key, rol_label):
     if st.session_state[session_key] not in opciones:
         st.session_state[session_key] = opciones[0]
 
+    # Lógica centralizada para obtener el código si el usuario es Técnico
     codigo_html_top = ""
     codigo_html_side = ""
     es_tecnico = st.session_state.user['rol'] == 'Técnico'
@@ -666,7 +688,9 @@ def mostrar_navegacion(opciones, session_key, rol_label):
     except TypeError:
         contenedor_nav_superior = st.container()
 
-    # ENTORNO PC
+    # ==========================================
+    # ENTORNO PC (Barra Superior)
+    # ==========================================
     with contenedor_nav_superior:
         col_logo, col_menu, col_user = st.columns([0.5, 3.3, 2.2])
         with col_logo:
@@ -693,6 +717,7 @@ def mostrar_navegacion(opciones, session_key, rol_label):
                 </div>
             """, unsafe_allow_html=True)
             
+            # Controles en PC
             col_btn_gen, col_btn_out = st.columns(2)
             with col_btn_gen:
                 if es_tecnico:
@@ -705,7 +730,9 @@ def mostrar_navegacion(opciones, session_key, rol_label):
                     st.session_state.user = None
                     st.rerun()
 
-    # ENTORNO MÓVIL
+    # ==========================================
+    # ENTORNO MÓVIL (Menú Lateral)
+    # ==========================================
     with st.sidebar:
         if os.path.exists("tortuga.png"):
             st.image("tortuga.png", width=160)
@@ -718,6 +745,7 @@ def mostrar_navegacion(opciones, session_key, rol_label):
             </div>
         """, unsafe_allow_html=True)
         
+        # Controles en Móvil
         if es_tecnico:
             texto_btn_side = "Regenerar Código" if codigo_tecnico else "Generar Código"
             if st.button(texto_btn_side, key=f"{session_key}_gen_side", use_container_width=True):
@@ -763,10 +791,9 @@ def mostrar_modulo_chat():
         if mensajes:
             for msg in mensajes:
                 remitente, _, texto, hora = msg
-                hora_str = str(hora)[11:16] if hora else ""
                 es_mio = (remitente == mi_nombre)
                 with st.chat_message("user" if es_mio else "assistant"):
-                    st.write(f"**{remitente}** *({hora_str})*")
+                    st.write(f"**{remitente}** *({hora[11:16]})*")
                     st.write(texto)
         else:
             st.caption("No hay mensajes previos. ¡Inicia el chat!")
@@ -778,7 +805,7 @@ def mostrar_modulo_chat():
         st.rerun()
 
 # =============================================================================
-# 4. CATÁLOGOS Y MÓDULOS DE VISTA
+# 4. CATÁLOGO COMPLETO DE PLAGAS
 # =============================================================================
 def mostrar_catalogo_plagas_principal():
     st.title("🪳 Enciclopedia Profesional de Plagas")
@@ -956,6 +983,9 @@ def mostrar_catalogo_plagas_principal():
     elif plaga_seleccionada == "Próximamente más plagas...":
         st.info("Estamos actualizando la enciclopedia técnica con nuevas especies. ¡Vuelve pronto!")
 
+# =============================================================================
+# 4B. CLASIFICACIÓN TOXICOLÓGICA (FRANJAS DE COLOR) — NUEVO
+# =============================================================================
 CLASES_TOXICOLOGICAS = {
     "Verde":    {"orden": 1, "categoria": "Categoría IV",  "descripcion": "Ligeramente tóxico",    "color": "#22c55e", "icono": "🟢"},
     "Azul":     {"orden": 2, "categoria": "Categoría III", "descripcion": "Moderadamente tóxico",  "color": "#3b82f6", "icono": "🔵"},
@@ -963,13 +993,17 @@ CLASES_TOXICOLOGICAS = {
     "Roja":     {"orden": 4, "categoria": "Categoría I",   "descripcion": "Extremadamente tóxico", "color": "#ef4444", "icono": "🔴"},
 }
 
+# 🔧 AQUÍ VAS A ASIGNAR LA FRANJA DE CADA PRODUCTO.
+# Usa como clave EXACTAMENTE el texto que aparece en el selectbox de productos.
 CLASE_TOXICOLOGICA_PRODUCTOS = {
     "Demand® 2.5 CS (Syngenta)": "Verde",
     "Termidor® 25 CE (BASF)": "Verde",
     "DDVP® 500 U (Agroquímica Tridente)": "Roja",
+    # "Otro producto®": "Amarilla",
 }
 
 def mostrar_badge_toxicidad(clase, mostrar_descripcion=True):
+    """Insignia visual con el color de la franja toxicológica del producto."""
     datos = CLASES_TOXICOLOGICAS.get(clase)
     if not datos:
         st.caption("⚪ Sin clasificación toxicológica asignada todavía.")
@@ -999,6 +1033,7 @@ def mostrar_badge_toxicidad(clase, mostrar_descripcion=True):
     """, unsafe_allow_html=True)
 
 def mostrar_guia_clases_toxicologicas():
+    """Tabla de referencia con las 4 franjas de color."""
     with st.expander("📖 Guía de Clasificación Toxicológica (Franjas de Color)"):
         st.caption(
             "Clasificación según la banda de color impresa en la etiqueta del "
@@ -1023,6 +1058,7 @@ def mostrar_guia_clases_toxicologicas():
             """, unsafe_allow_html=True)
 
 def mostrar_filtro_por_clase_toxicologica():
+    """Selector para consultar rápidamente qué productos hay por franja."""
     st.markdown("#### 🔍 Filtrar productos por franja toxicológica")
     clase_filtro = st.selectbox(
         "Selecciona una franja:",
@@ -1040,6 +1076,9 @@ def mostrar_filtro_por_clase_toxicologica():
     else:
         st.caption("Ningún producto registrado en esta franja todavía.")
 
+# =============================================================================
+# 4C. CATÁLOGO DE PRODUCTOS QUÍMICOS
+# =============================================================================
 def mostrar_catalogo_quimicos_principal():
     st.title("🧪 Catálogo de Productos Químicos")
     st.caption("Fichas técnicas de los productos utilizados en los servicios de control de plagas.")
@@ -1087,9 +1126,11 @@ def mostrar_catalogo_quimicos_principal():
             • **Formulación:** Suspensión encapsulada (CS)  
             • **Grupo IRAC:** 3A
             """)
+
             mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
 
         st.markdown("---")
+
         tab_accion, tab_plagas, tab_lugares, tab_ventajas, tab_dosis, tab_epp, tab_precauciones, tab_residual, tab_toxi = st.tabs([
             "⚙️ Modo de Acción", "🐜 Plagas que Controla", "🏢 Lugares de Aplicación",
             "✅ Ventajas", "💧 Dosis", "🦺 EPP", "⚠️ Precauciones", "⏳ Tiempo Residual", "🏷️ Toxicidad"
@@ -1098,40 +1139,110 @@ def mostrar_catalogo_quimicos_principal():
         with tab_accion:
             st.subheader("Modo de Acción")
             st.markdown("""
-            La lambda-cihalotrina actúa por **contacto e ingestión**, alterando los canales de sodio del sistema nervioso de los insectos.
+            La lambda-cihalotrina actúa por **contacto e ingestión**, alterando los canales de sodio del sistema nervioso de los insectos. Esto provoca:
+
+            * Hiperactividad inicial.
+            * Parálisis.
+            * Muerte del insecto.
+
+            Gracias a la microencapsulación, el ingrediente activo permanece protegido y se libera lentamente, aumentando el tiempo de control residual.
             """)
 
         with tab_plagas:
             st.subheader("Plagas que Controla")
-            st.markdown("* Cucarachas\n* Hormigas\n* Moscas\n* Mosquitos\n* Pulgas\n* Arañas\n* Alacranes")
+            st.markdown("""
+            Está registrado para controlar numerosas plagas urbanas, entre ellas:
+
+            * Cucarachas
+            * Hormigas
+            * Moscas
+            * Mosquitos
+            * Pulgas
+            * Arañas
+            * Alacranes
+            * Avispas
+            * Escarabajos
+            * Grillos
+            * Ciempiés
+            * Milpiés
+            * Pescadito de plata
+            * Cochinillas
+            * Jejenes
+            * Palomillas
+            """)
 
         with tab_lugares:
             st.subheader("Lugares de Aplicación")
-            st.markdown("* Viviendas\n* Restaurantes\n* Hoteles\n* Hospitales\n* Escuelas\n* Bodegas")
+            st.markdown("""
+            Puede utilizarse en:
+
+            * Viviendas.
+            * Restaurantes.
+            * Hoteles.
+            * Hospitales.
+            * Escuelas.
+            * Oficinas.
+            * Bodegas.
+            * Industrias alimentarias.
+            * Áreas perimetrales.
+            * Interiores y exteriores.
+            """)
 
         with tab_ventajas:
             st.subheader("Ventajas")
-            st.markdown("* ✔️ Rápido efecto de derribo.\n* ✔️ Excelente efecto residual.\n* ✔️ Base agua.")
+            st.markdown("""
+            * ✔️ Rápido efecto de derribo.
+            * ✔️ Excelente efecto residual.
+            * ✔️ Base agua (menor olor que los concentrados emulsionables).
+            * ✔️ La microencapsulación reduce la degradación por luz y temperatura.
+            * ✔️ Puede aplicarse sobre superficies porosas y no porosas.
+            """)
 
         with tab_dosis:
             st.subheader("Dosis Recomendada")
-            st.markdown("Seguir siempre la etiqueta oficial del producto.")
+            st.markdown("La dosis depende de la plaga y del nivel de infestación. Siempre debe seguirse la **etiqueta oficial del producto**. La ficha técnica del fabricante proporciona las concentraciones autorizadas para cada tipo de aplicación.")
 
         with tab_epp:
             st.subheader("Equipo de Protección Personal")
-            st.markdown("* Guantes resistentes a químicos.\n* Lentes de seguridad.\n* Mascarilla adecuada.\n* Overol y botas.")
+            st.markdown("""
+            Durante la aplicación se recomienda utilizar:
+
+            * Guantes resistentes a químicos.
+            * Lentes de seguridad.
+            * Mascarilla o respirador adecuado cuando exista riesgo de inhalación.
+            * Overol o ropa de manga larga.
+            * Botas de trabajo.
+            """)
 
         with tab_precauciones:
             st.subheader("Precauciones")
-            st.warning("* Mantener fuera del alcance de niños y mascotas.\n* Altamente tóxico para organismos acuáticos.")
+            st.warning("""
+            * Mantener fuera del alcance de niños y mascotas.
+            * Evitar contaminar alimentos y utensilios.
+            * No aplicar directamente sobre personas o animales.
+            * Es altamente tóxico para organismos acuáticos, por lo que no debe desecharse en ríos, lagos o drenajes.
+            """)
 
         with tab_residual:
             st.subheader("Tiempo Residual")
-            st.markdown("El efecto residual suele mantenerse varias semanas.")
+            st.markdown("""
+            El efecto residual suele mantenerse **varias semanas**, dependiendo de factores como:
+
+            * Tipo de superficie.
+            * Exposición al sol.
+            * Lluvia.
+            * Frecuencia de limpieza.
+            * Nivel de infestación.
+            """)
 
         with tab_toxi:
             st.subheader("Clasificación Toxicológica")
             mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+            st.markdown("""
+            La franja de color impresa en la etiqueta del producto indica el nivel de riesgo
+            para la salud humana según la vía de exposición (oral, dérmica o inhalación).
+            Consulta siempre la etiqueta oficial del fabricante para el dato definitivo.
+            """)
 
     elif producto_seleccionado == "Termidor® 25 CE (BASF)":
         st.markdown("---")
@@ -1151,9 +1262,130 @@ def mostrar_catalogo_quimicos_principal():
         with col_info:
             st.header("🐜 Termidor® 25 CE (*BASF*)")
             st.markdown("""
-            **Termidor® 25 CE** es un insecticida profesional formulado con **Fipronil**, orientado al control de **termitas** y otras plagas urbanas.
+            **Termidor® 25 CE** es un insecticida profesional formulado con **Fipronil**, especialmente
+            orientado al control de **termitas**, aunque su registro en México también contempla
+            varias otras plagas urbanas.
             """)
+            st.info("""
+            **Información General**  
+            • **Nombre comercial:** Termidor® 25 CE  
+            • **Fabricante:** BASF  
+            • **Ingrediente activo:** Fipronil  
+            • **Concentración:** 3% p/p, equivalente a 25 g/L  
+            • **Formulación:** Concentrado Emulsionable (CE)  
+            • **Grupo químico:** Fenilpirazoles  
+            • **Registro México:** RSCO-URB-INAC-0101A-X0025-009-003  
+            • **Categoría toxicológica (ficha del fabricante):** 5
+            """)
+
             mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+            st.caption("Franja asignada en esta plataforma: Verde. La ficha del fabricante reporta categoría toxicológica 5; verifica siempre la etiqueta oficial vigente.")
+
+        st.markdown("---")
+
+        tab_uso, tab_accion, tab_lugares, tab_dilucion, tab_diferencias, tab_precauciones, tab_toxi = st.tabs([
+            "🎯 Para qué sirve", "⚙️ Modo de Acción", "🏠 Dónde se Utiliza",
+            "💧 Dilución", "🆚 Termidor vs Demand", "⚠️ Precauciones", "🏷️ Toxicidad"
+        ])
+
+        with tab_uso:
+            st.subheader("¿Para qué sirve?")
+            st.markdown("""
+            Su principal uso es el **control y prevención de termitas**, incluyendo:
+
+            * Termitas subterráneas
+            * Termitas de madera seca
+            * Termitas de nidos acartonados
+
+            También está registrado en México para: cucarachas, hormigas, moscas, mosquitos, avispas,
+            pulgas, chinches, chinches de cama, pescadito de plata, grillos, cochinillas, tijerillas,
+            alacranes, arañas, ciempiés, gorgojos y garrapatas.
+            """)
+
+        with tab_accion:
+            st.subheader("¿Cómo funciona?")
+            st.markdown("""
+            El **fipronil** afecta el sistema nervioso de los insectos. Una característica especialmente
+            importante de Termidor es su **efecto de transferencia**: una termita que entra en contacto
+            con el producto puede llevar partículas del insecticida al interior de la colonia y
+            transmitirlo a otros individuos.
+
+            Esto es especialmente relevante en tratamientos contra termitas, porque el control no depende
+            únicamente de matar a las termitas que entran directamente en contacto con la aplicación.
+            BASF señala este efecto como una de las características principales del producto.
+            """)
+
+        with tab_lugares:
+            st.subheader("¿Dónde se utiliza?")
+            st.markdown("""
+            La ficha técnica mexicana contempla aplicaciones en exteriores de instalaciones como:
+
+            * Casas y edificios
+            * Escuelas
+            * Hoteles
+            * Restaurantes
+            * Oficinas
+            * Almacenes
+            * Supermercados
+            * Plantas industriales
+            * Hospitales
+            * Alcantarillas y coladeras
+            * Zoológicos
+            * Tiendas de mascotas
+
+            También se utiliza en tratamientos previos y posteriores a la construcción para establecer
+            barreras contra termitas subterráneas.
+            """)
+
+        with tab_dilucion:
+            st.subheader("Dilución para termitas")
+            st.markdown("""
+            Es importante distinguir entre la **concentración del producto** y la **cantidad de
+            producto comercial** que se prepara.
+
+            La ficha técnica mexicana indica que para preparar la emulsión destinada a tratamientos
+            contra termitas se utilizan:
+
+            * **2 L** de Termidor 25 CE por cada **100 L** de agua → emulsión al **2%**
+            * **4 L** de Termidor 25 CE por cada **100 L** de agua → emulsión al **4%**
+            """)
+            st.caption("La dosis exacta depende del tipo de tratamiento y de la plaga, por lo que debe respetarse la etiqueta y el método autorizado para cada situación.")
+
+        with tab_diferencias:
+            st.subheader("Diferencia entre Termidor 25 CE y Demand 2.5 CS")
+            df_comparativo = pd.DataFrame(
+                {
+                    "Termidor 25 CE": ["Fipronil", "25 g/L", "Fenilpirazoles", "CE", "Termitas", "Sí", "Prolongado", "⭐⭐⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"],
+                    "Demand 2.5 CS": ["Lambda-cihalotrina", "25 g/L", "Piretroides", "CS", "Plagas urbanas", "No es su característica principal", "Prolongado", "⭐⭐", "⭐⭐⭐⭐⭐", "⭐⭐⭐⭐"],
+                },
+                index=["Ingrediente activo", "Concentración", "Familia", "Formulación", "Principal enfoque",
+                       "Efecto de transferencia", "Residual", "Termitas", "Cucarachas", "Hormigas"]
+            )
+            st.dataframe(df_comparativo, use_container_width=True)
+            st.caption(
+                "En pocas palabras: para un servicio profesional de termitas, Termidor 25 CE es mucho más "
+                "especializado por su fipronil y su efecto de transferencia; para tratamientos generales de "
+                "insectos urbanos, Demand 2.5 CS está más orientado a ese uso."
+            )
+
+        with tab_precauciones:
+            st.subheader("Precauciones")
+            st.warning("""
+            **Termidor 25 CE es un plaguicida profesional.** La ficha mexicana indica que su aplicación debe
+            ser realizada por profesionales en control de plagas urbanas, y las aplicaciones deben efectuarse
+            conforme a las restricciones de la etiqueta.
+            """)
+
+        with tab_toxi:
+            st.subheader("Clasificación Toxicológica")
+            mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+            st.markdown("""
+            La franja de color impresa en la etiqueta del producto indica el nivel de riesgo
+            para la salud humana según la vía de exposición (oral, dérmica o inhalación).
+            La ficha técnica del fabricante reporta además una categoría toxicológica numérica (5)
+            que corresponde a su propio sistema de clasificación; consulta siempre la etiqueta
+            oficial vigente para el dato definitivo.
+            """)
 
     elif producto_seleccionado == "DDVP® 500 U (Agroquímica Tridente)":
         st.markdown("---")
@@ -1173,13 +1405,152 @@ def mostrar_catalogo_quimicos_principal():
         with col_info:
             st.header("🧪 DDVP® 500 U (*Agroquímica Tridente*)")
             st.markdown("""
-            **DDVP® 500 U** está formulado con **diclorvos**. Uso exclusivo para aplicadores de plaguicidas.
+            **DDVP® 500 U** es la presentación urbana de Agroquímica Tridente formulada con **diclorvos**.
+            No es exactamente lo mismo que el DDVP 500 agrícola; aunque ambos contienen diclorvós, tienen
+            registros y usos distintos. COFEPRIS identifica este producto dentro del registro urbano para
+            **uso exclusivo de aplicadores de plaguicidas**.
             """)
+            st.info("""
+            **Información General**  
+            • **Nombre comercial:** DDVP® 500 U  
+            • **Fabricante:** Agroquímica Tridente, S.A. de C.V.  
+            • **Ingrediente activo:** Diclorvos (DDVP)  
+            • **Concentración:** 47.50 % p/p  
+            • **Equivalencia:** 500 g de I.A./L a 20 °C  
+            • **Formulación:** Concentrado Emulsionable (CE)  
+            • **Familia química:** Organofosforados  
+            • **Registro sanitario:** RSCO-URB-INAC-121-321-009-48  
+            • **Categoría toxicológica (ficha del fabricante):** 2 — Peligro
+            """)
+
             mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+            st.error("⚠️ Uso urbano exclusivo para aplicadores de plaguicidas, conforme a COFEPRIS.")
+
+        st.markdown("---")
+
+        tab_plagas, tab_accion, tab_dosis, tab_lugares, tab_aplicacion, tab_seguridad, tab_comparativo, tab_toxi = st.tabs([
+            "🐜 Plagas que Controla", "⚙️ Modo de Acción", "💧 Dosis", "🏠 Lugares de Aplicación",
+            "🌫️ Aspersión y Nebulización", "⚠️ Seguridad", "🆚 Comparativo", "🏷️ Toxicidad"
+        ])
+
+        with tab_plagas:
+            st.subheader("¿Qué plagas controla?")
+            st.markdown("""
+            La ficha urbana contempla principalmente:
+
+            * Cucaracha alemana (*Blattella germanica*)
+            * Cucaracha americana (*Periplaneta americana*)
+            * Alacranes (*Centruroides spp.*)
+            * Polilla de la alfombra (*Trichophaga tapetzella*)
+            * Polilla de tapete
+
+            El producto está destinado al control profesional de plagas urbanas.
+            """)
+
+        with tab_accion:
+            st.subheader("¿Cómo funciona?")
+            st.markdown("""
+            El diclorvos es un organofosforado que actúa principalmente sobre el sistema nervioso de
+            los artrópodos mediante la inhibición de la acetilcolinesterasa.
+
+            En términos sencillos:
+
+            **DDVP → inhibe acetilcolinesterasa → acumulación de acetilcolina → alteración nerviosa
+            → parálisis → muerte.**
+
+            El fabricante describe acción por contacto y estomacal, y el producto posee volatilidad
+            que contribuye a su acción en determinadas aplicaciones.
+            """)
+
+        with tab_dosis:
+            st.subheader("Dosis para aspersión")
+            st.markdown("Para las plagas urbanas indicadas, la documentación comercial señala **10–20 mL de producto por cada litro de agua**.")
+            df_dosis = pd.DataFrame(
+                {"DDVP 500 U": ["10–20 mL", "50–100 mL", "100–200 mL", "200–400 mL"]},
+                index=["1 L de agua", "5 L de agua", "10 L de agua", "20 L de agua"]
+            )
+            st.dataframe(df_dosis, use_container_width=True)
+            st.caption("Utiliza la dosis y método que correspondan a la etiqueta vigente del envase que tengas. No conviene extrapolar una dosis de otra formulación de DDVP.")
+
+        with tab_lugares:
+            st.subheader("¿Dónde se puede utilizar?")
+            st.markdown("""
+            La documentación del producto contempla aplicaciones urbanas en lugares como:
+
+            * Casas habitación
+            * Restaurantes
+            * Supermercados
+            * Bodegas
+            * Sótanos
+            * Escuelas
+            * Oficinas
+            * Edificios
+            * Instalaciones comerciales e industriales
+
+            Para aplicaciones de aspersión, se indican sitios como grietas y hendiduras, espacios entre
+            paredes, alrededor de coladeras, marcos de puertas, tuberías y ductos, de acuerdo con la etiqueta.
+            """)
+
+        with tab_aplicacion:
+            st.subheader("Aspersión y Nebulización")
+            st.markdown("""
+            Una característica del DDVP 500 U es que se contempla para diferentes modalidades de aplicación, incluyendo:
+
+            * Aspersión manual.
+            * Aspersión motorizada.
+            * Nebulización en frío.
+            * Termonebulización.
+            """)
+            st.warning("La nebulización requiere controles de seguridad mucho más estrictos debido a la exposición potencial a vapores y aerosol.")
+
+        with tab_seguridad:
+            st.subheader("Seguridad")
+            st.error("DDVP 500 U es **categoría toxicológica 2 — PELIGRO**, y COFEPRIS establece que su uso urbano es exclusivo para aplicadores de plaguicidas.")
+            st.markdown("""
+            Por ser diclorvos:
+
+            * Evita inhalar vapores o neblina.
+            * Evita contacto con piel y ojos.
+            * Utiliza el EPP indicado por la etiqueta y HDS.
+            * Retira personas, mascotas y alimentos de las áreas que vayan a tratarse.
+            * No comas, bebas ni fumes durante la preparación/aplicación.
+            * No apliques directamente sobre personas o animales.
+            * Respeta las condiciones de ventilación y reingreso.
+            * Evita absolutamente la contaminación de agua.
+            * Conserva el producto en su envase original.
+            """)
+            st.caption("La HDS de Tridente identifica al diclorvos como organofosforado y proporciona medidas específicas de primeros auxilios y manejo de exposición.")
+
+        with tab_comparativo:
+            st.subheader("Comparación rápida con los productos del catálogo")
+            df_comparativo_ddvp = pd.DataFrame(
+                {
+                    "Ingrediente": ["Lambda-cihalotrina 2.5%", "Fipronil", "Diclorvos 47.5%"],
+                    "Grupo": ["Piretroide", "Fenilpirazol", "Organofosforado"],
+                    "Principal uso": ["Plagas urbanas", "Termitas", "Cucarachas, alacranes, polillas"],
+                },
+                index=["Demand 2.5 CS", "Termidor 25 CE", "DDVP 500 U"]
+            )
+            st.dataframe(df_comparativo_ddvp, use_container_width=True)
+            st.caption("Una diferencia importante es que DDVP 500 U no debería tratarse como un insecticida rutinario de bajo riesgo: su registro lo clasifica como categoría toxicológica 2 y restringe su uso a aplicadores de plaguicidas.")
+
+        with tab_toxi:
+            st.subheader("Clasificación Toxicológica")
+            mostrar_badge_toxicidad(CLASE_TOXICOLOGICA_PRODUCTOS.get(producto_seleccionado))
+            st.markdown("""
+            La franja de color impresa en la etiqueta del producto indica el nivel de riesgo
+            para la salud humana según la vía de exposición (oral, dérmica o inhalación).
+            La ficha técnica del fabricante reporta además una categoría toxicológica numérica (2 — Peligro)
+            que corresponde a su propio sistema de clasificación; consulta siempre la etiqueta
+            oficial vigente para el dato definitivo.
+            """)
 
     elif producto_seleccionado == "Próximamente más productos...":
         st.info("Estamos actualizando el catálogo con nuevos productos químicos. ¡Vuelve pronto!")
 
+# =============================================================================
+# 4D. GRÁFICA DE NIVEL DE INFESTACIÓN MENSUAL (SOLO TÉCNICOS)
+# =============================================================================
 MESES_ORDEN = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
 MESES_NOMBRE = {
     "01": "Ene", "02": "Feb", "03": "Mar", "04": "Abr", "05": "May", "06": "Jun",
@@ -1191,9 +1562,12 @@ def mostrar_grafica_infestacion(cliente=None):
     st.subheader("📈 Nivel de Infestación Mensual")
     if cliente:
         st.caption("Cantidad de servicios registrados en tu local por nivel de infestación (Baja, Media, Alta) a lo largo del año.")
-        tipo_ref = obtener_tipo_establecimiento(cliente)
     else:
         st.caption("Cantidad de servicios registrados por nivel de infestación (Baja, Media, Alta) a lo largo del año.")
+
+    if cliente:
+        tipo_ref = obtener_tipo_establecimiento(cliente)
+    else:
         tipo_ref = st.selectbox("Ver rangos de referencia para:", TIPOS_ESTABLECIMIENTO, key="tipo_ref_grafica")
 
     with st.expander(f"ℹ️ ¿Cómo se clasifica la infestación en '{tipo_ref}'?"):
@@ -1201,6 +1575,10 @@ def mostrar_grafica_infestacion(cliente=None):
             icono, descripcion = DESCRIPCION_NIVEL[nivel]
             rango_texto = f"{minimo} a {maximo}" if maximo else f"Más de {minimo - 1}"
             st.markdown(f"**{icono} {nivel}** ({rango_texto}): {descripcion}")
+        if cliente:
+            st.caption("Este es el nivel de infestación asignado según el tipo de establecimiento de tu local.")
+        else:
+            st.caption("Cada nivel se asigna automáticamente según el tipo de establecimiento del cliente. Puedes ajustar estos números en '⚙️ Configurar Rangos'.")
 
     anios_disponibles = obtener_anios_disponibles(cliente=cliente)
     anio_actual = str(datetime.now().year)
@@ -1211,11 +1589,11 @@ def mostrar_grafica_infestacion(cliente=None):
 
     datos = obtener_infestacion_por_mes(anio_sel, cliente=cliente)
 
+    # Construir matriz mes x nivel, inicializada en 0
     tabla = {mes: {nivel: 0 for nivel in NIVELES_ORDEN} for mes in MESES_ORDEN}
     for mes, nivel, cantidad in datos:
-        mes_formato = str(mes).zfill(2)
-        if mes_formato in tabla and nivel in NIVELES_ORDEN:
-            tabla[mes_formato][nivel] = cantidad
+        if mes in tabla and nivel in NIVELES_ORDEN:
+            tabla[mes][nivel] = cantidad
 
     df_infestacion = pd.DataFrame(
         [[MESES_NOMBRE[mes]] + [tabla[mes][nivel] for nivel in NIVELES_ORDEN] for mes in MESES_ORDEN],
@@ -1240,9 +1618,15 @@ def mostrar_grafica_infestacion(cliente=None):
         use_container_width=True
     )
 
+    with st.expander("📋 Ver tabla de datos"):
+        st.dataframe(df_infestacion, use_container_width=True)
+
+# =============================================================================
+# 4E. CONFIGURAR RANGOS DE INFESTACIÓN POR TIPO DE ESTABLECIMIENTO (SOLO TÉCNICOS)
+# =============================================================================
 def mostrar_configurar_rangos():
     st.subheader("⚙️ Configurar Rangos de Infestación")
-    st.caption("Ajusta a partir de cuántas plagas observadas se considera Baja, Media o Alta, según el tipo de lugar.")
+    st.caption("Ajusta a partir de cuántas plagas observadas se considera Baja, Media o Alta, según el tipo de lugar. Estos valores son los que usa el sistema para clasificar automáticamente cada servicio registrado.")
 
     tipo_edit = st.selectbox("Tipo de Establecimiento", TIPOS_ESTABLECIMIENTO, key="tipo_config_rangos")
     rangos_actuales = obtener_rangos_por_tipo(tipo_edit)
@@ -1270,7 +1654,7 @@ def mostrar_configurar_rangos():
             st.rerun()
 
 # =============================================================================
-# 5. AUTENTICACIÓN
+# 5. AUTENTICACIÓN MEJORADA
 # =============================================================================
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -1335,7 +1719,7 @@ def mostrar_autenticacion():
         st.markdown("""
         <div style="background-color: #1f2937; padding: 20px; border-radius: 10px; border-left: 5px solid #10b981; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <h4 style="color: #10b981; margin-top: 0; font-family: sans-serif;">Características del Sistema:</h4>
-            <p style="margin-bottom: 8px; color: #f3f4f6; font-family: sans-serif;">🛡️ <b>Seguridad:</b> Base de datos en la nube (Railway).</p>
+            <p style="margin-bottom: 8px; color: #f3f4f6; font-family: sans-serif;">🛡️ <b>Seguridad:</b> Datos encriptados y respaldados.</p>
             <p style="margin-bottom: 8px; color: #f3f4f6; font-family: sans-serif;">📍 <b>Geolocalización:</b> Control de servicios en tiempo real.</p>
             <p style="margin-bottom: 0; color: #f3f4f6; font-family: sans-serif;">📊 <b>Trazabilidad:</b> Historial y reportes fotográficos.</p>
         </div>
@@ -1433,7 +1817,7 @@ def mostrar_autenticacion():
     mostrar_terminos_condiciones()
 
 # =============================================================================
-# 6. VISTAS PRINCIPALES
+# 6. VISTAS PRINCIPALES (TÉCNICO Y CLIENTE)
 # =============================================================================
 def mostrar_ubicacion_real():
     st.subheader("📍 Geolocalización y Control de Servicios")
@@ -1514,10 +1898,13 @@ def vista_tecnico():
     
     if opcion == "🏠 Inicio / Catálogo":
         mostrar_catalogo_plagas_principal()
+
     elif opcion == "🧪 Productos Químicos":
         mostrar_catalogo_quimicos_principal()
+
     elif opcion == "⚙️ Configurar Rangos":
         mostrar_configurar_rangos()
+
     elif opcion == "➕ Registrar Servicio":
         st.subheader("📝 Registrar Servicio de Fumigación")
         lista_clientes = obtener_lista_clientes()
@@ -1530,6 +1917,7 @@ def vista_tecnico():
                 icono, descripcion = DESCRIPCION_NIVEL[nivel]
                 rango_texto = f"{minimo} a {maximo}" if maximo else f"Más de {minimo - 1}"
                 st.markdown(f"**{icono} {nivel}** ({rango_texto}): {descripcion}")
+            st.caption("Cambia el tipo de establecimiento de este cliente desde '👥 Gestión Clientes' → editar, o ajusta los rangos en '⚙️ Configurar Rangos'.")
 
         col1, col2 = st.columns(2)
         with col1:
@@ -1548,7 +1936,8 @@ def vista_tecnico():
             certificado = st.file_uploader(
                 "Subir Certificado de Fumigación (opcional)",
                 type=["pdf", "jpg", "png", "jpeg"],
-                key="certificado_servicio"
+                key="certificado_servicio",
+                help="Puedes anexar una copia escaneada o fotografiada del certificado emitido para este servicio."
             )
 
         st.markdown("---")
@@ -1562,7 +1951,7 @@ def vista_tecnico():
 
         firma_array = None
         if CANVAS_DISPONIBLE:
-            st.caption("Debajo, pide al encargado que firme con el mouse o pantalla táctil.")
+            st.caption("Debajo, pide al encargado que firme con el mouse o el dedo (pantalla táctil) para confirmar el servicio.")
             if "firma_reset_count" not in st.session_state:
                 st.session_state.firma_reset_count = 0
 
@@ -1582,6 +1971,8 @@ def vista_tecnico():
             if st.button("🧹 Limpiar Firma", key="btn_limpiar_firma"):
                 st.session_state.firma_reset_count += 1
                 st.rerun()
+        else:
+            st.warning("⚠️ Para habilitar la firma digital instala el paquete `streamlit-drawable-canvas` (pip install streamlit-drawable-canvas) y reinicia la app.")
 
         st.markdown("---")
         submit_serv = st.button("Guardar Reporte de Servicio", type="primary", use_container_width=True, key="btn_guardar_servicio")
@@ -1618,7 +2009,7 @@ def vista_tecnico():
                     nivel_calculado, int(cantidad_observada),
                     encargado_nombre.strip(), path_firma, path_certificado
                 )
-                st.success(f"✅ Servicio registrado correctamente. Nivel de infestación asignado: **{nivel_calculado}**.")
+                st.success(f"✅ Servicio registrado correctamente. Nivel de infestación asignado: **{nivel_calculado}** ({int(cantidad_observada)} plagas observadas).")
                 st.session_state.firma_reset_count = st.session_state.get("firma_reset_count", 0) + 1
                 st.rerun()
 
@@ -1627,11 +2018,17 @@ def vista_tecnico():
 
     elif opcion == "👥 Gestión Clientes":
         st.subheader("👥 Gestión de Clientes y Locales")
+
         correo_tecnico_actual = st.session_state.user['correo']
         codigo_tecnico_actual = obtener_codigo_tecnico(correo_tecnico_actual)
         
         with st.container():
             st.markdown("#### 🔑 Tu código para nuevos clientes")
+            st.caption(
+                "Compártelo con tus clientes nuevos: al crear su cuenta como Cliente "
+                "pueden anexarlo y quedan agregados aquí automáticamente."
+            )
+
             texto_boton_codigo = "🔄 Regenerar código" if codigo_tecnico_actual else "✨ Generar mi código"
             
             if st.button(texto_boton_codigo, key="btn_generar_codigo_tecnico"):
@@ -1640,7 +2037,10 @@ def vista_tecnico():
                     codigo_tecnico_actual = nuevo_codigo
                     st.success(f"✅ ¡Código generado con éxito: {nuevo_codigo}!")
                 else:
-                    st.error("⚠️ No se pudo generar el código.")
+                    st.error(
+                        "⚠️ No se pudo generar el código: no se encontró tu cuenta "
+                        "por correo. Intenta cerrar sesión y volver a entrar."
+                    )
 
             if codigo_tecnico_actual:
                 st.code(codigo_tecnico_actual, language=None)
@@ -1655,7 +2055,7 @@ def vista_tecnico():
                 responsable = st.text_input("Persona Responsable")
                 tel_local = st.text_input("Teléfono de Contacto")
                 dir_local = st.text_input("Dirección Completa")
-                tipo_local = st.selectbox("Tipo de Establecimiento", TIPOS_ESTABLECIMIENTO)
+                tipo_local = st.selectbox("Tipo de Establecimiento", TIPOS_ESTABLECIMIENTO, help="Define los rangos de infestación (Baja/Media/Alta) que se usarán para este cliente.")
                 
                 btn_cli = st.form_submit_button("Guardar Cliente", type="primary")
                 if btn_cli:
@@ -1708,10 +2108,13 @@ def vista_cliente():
     
     if opcion == "🏠 Inicio / Catálogo":
         mostrar_catalogo_plagas_principal()
+
     elif opcion == "🧪 Productos Químicos":
         mostrar_catalogo_quimicos_principal()
+
     elif opcion == "📈 Nivel de Infestación":
         mostrar_grafica_infestacion(cliente=st.session_state.user['nombre'])
+
     elif opcion == "📋 Mis Servicios & Reportes":
         st.subheader("📋 Historial de Servicios en tu Local")
         nombre_usuario = st.session_state.user['nombre']
