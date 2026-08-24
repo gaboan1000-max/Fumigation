@@ -441,24 +441,36 @@ def obtener_todos_reportes():
     conn.close()
     return datos
 
-def obtener_infestacion_por_mes(anio):
-    """Devuelve el conteo de reportes por mes y nivel de infestación (Baja/Media/Alta) para el año indicado."""
+def obtener_infestacion_por_mes(anio, cliente=None):
+    """Devuelve el conteo de reportes por mes y nivel de infestación (Baja/Media/Alta) para el año indicado.
+    Si se pasa 'cliente', solo cuenta los reportes de ese cliente."""
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute('''
-        SELECT strftime('%m', fecha) AS mes, nivel_infestacion, COUNT(*) 
-        FROM reportes
-        WHERE strftime('%Y', fecha) = ?
-        GROUP BY mes, nivel_infestacion
-    ''', (str(anio),))
+    if cliente:
+        c.execute('''
+            SELECT strftime('%m', fecha) AS mes, nivel_infestacion, COUNT(*) 
+            FROM reportes
+            WHERE strftime('%Y', fecha) = ? AND cliente_nombre = ? COLLATE NOCASE
+            GROUP BY mes, nivel_infestacion
+        ''', (str(anio), cliente))
+    else:
+        c.execute('''
+            SELECT strftime('%m', fecha) AS mes, nivel_infestacion, COUNT(*) 
+            FROM reportes
+            WHERE strftime('%Y', fecha) = ?
+            GROUP BY mes, nivel_infestacion
+        ''', (str(anio),))
     datos = c.fetchall()
     conn.close()
     return datos
 
-def obtener_anios_disponibles():
+def obtener_anios_disponibles(cliente=None):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute("SELECT DISTINCT strftime('%Y', fecha) FROM reportes ORDER BY 1 DESC")
+    if cliente:
+        c.execute("SELECT DISTINCT strftime('%Y', fecha) FROM reportes WHERE cliente_nombre = ? COLLATE NOCASE ORDER BY 1 DESC", (cliente,))
+    else:
+        c.execute("SELECT DISTINCT strftime('%Y', fecha) FROM reportes ORDER BY 1 DESC")
     anios = [row[0] for row in c.fetchall() if row[0]]
     conn.close()
     return anios
@@ -1546,26 +1558,36 @@ MESES_NOMBRE = {
 }
 NIVELES_ORDEN = ["Baja", "Media", "Alta"]
 
-def mostrar_grafica_infestacion():
+def mostrar_grafica_infestacion(cliente=None):
     st.subheader("📈 Nivel de Infestación Mensual")
-    st.caption("Cantidad de servicios registrados por nivel de infestación (Baja, Media, Alta) a lo largo del año.")
+    if cliente:
+        st.caption("Cantidad de servicios registrados en tu local por nivel de infestación (Baja, Media, Alta) a lo largo del año.")
+    else:
+        st.caption("Cantidad de servicios registrados por nivel de infestación (Baja, Media, Alta) a lo largo del año.")
 
-    tipo_ref = st.selectbox("Ver rangos de referencia para:", TIPOS_ESTABLECIMIENTO, key="tipo_ref_grafica")
+    if cliente:
+        tipo_ref = obtener_tipo_establecimiento(cliente)
+    else:
+        tipo_ref = st.selectbox("Ver rangos de referencia para:", TIPOS_ESTABLECIMIENTO, key="tipo_ref_grafica")
+
     with st.expander(f"ℹ️ ¿Cómo se clasifica la infestación en '{tipo_ref}'?"):
         for nivel, minimo, maximo in obtener_rangos_por_tipo(tipo_ref):
             icono, descripcion = DESCRIPCION_NIVEL[nivel]
             rango_texto = f"{minimo} a {maximo}" if maximo else f"Más de {minimo - 1}"
             st.markdown(f"**{icono} {nivel}** ({rango_texto}): {descripcion}")
-        st.caption("Cada nivel se asigna automáticamente según el tipo de establecimiento del cliente. Puedes ajustar estos números en '⚙️ Configurar Rangos'.")
+        if cliente:
+            st.caption("Este es el nivel de infestación asignado según el tipo de establecimiento de tu local.")
+        else:
+            st.caption("Cada nivel se asigna automáticamente según el tipo de establecimiento del cliente. Puedes ajustar estos números en '⚙️ Configurar Rangos'.")
 
-    anios_disponibles = obtener_anios_disponibles()
+    anios_disponibles = obtener_anios_disponibles(cliente=cliente)
     anio_actual = str(datetime.now().year)
     if anio_actual not in anios_disponibles:
         anios_disponibles = [anio_actual] + anios_disponibles
 
-    anio_sel = st.selectbox("Año a consultar", anios_disponibles, index=0)
+    anio_sel = st.selectbox("Año a consultar", anios_disponibles, index=0, key=f"anio_grafica_{'cliente' if cliente else 'tecnico'}")
 
-    datos = obtener_infestacion_por_mes(anio_sel)
+    datos = obtener_infestacion_por_mes(anio_sel, cliente=cliente)
 
     # Construir matriz mes x nivel, inicializada en 0
     tabla = {mes: {nivel: 0 for nivel in NIVELES_ORDEN} for mes in MESES_ORDEN}
@@ -1923,7 +1945,7 @@ def vista_tecnico():
 
         encargado_nombre = st.text_input(
             "Nombre del Encargado que recibe el servicio",
-            placeholder="Ej. María López",
+            placeholder="Nombre Del Encargado",
             key="encargado_nombre_servicio"
         )
 
@@ -2077,6 +2099,7 @@ def vista_cliente():
             "🏠 Inicio / Catálogo",
             "🧪 Productos Químicos",
             "📋 Mis Servicios & Reportes",
+            "📈 Nivel de Infestación",
             "💬 Mensajería"
         ],
         session_key="nav_cliente",
@@ -2088,6 +2111,9 @@ def vista_cliente():
 
     elif opcion == "🧪 Productos Químicos":
         mostrar_catalogo_quimicos_principal()
+
+    elif opcion == "📈 Nivel de Infestación":
+        mostrar_grafica_infestacion(cliente=st.session_state.user['nombre'])
 
     elif opcion == "📋 Mis Servicios & Reportes":
         st.subheader("📋 Historial de Servicios en tu Local")
@@ -2103,6 +2129,15 @@ def vista_cliente():
                     st.write(f"**Estatus:** {estatus}")
                     if evidencia and os.path.exists(evidencia):
                         st.image(evidencia, width=300, caption="Evidencia del servicio")
+
+                    if encargado_nombre or (firma_path and os.path.exists(firma_path)):
+                        st.markdown("---")
+                        st.markdown("**✍️ Conformidad del Encargado**")
+                        if encargado_nombre:
+                            st.write(f"**Recibió el servicio:** {encargado_nombre}")
+                        if firma_path and os.path.exists(firma_path):
+                            st.image(firma_path, width=300, caption="Firma del encargado")
+
                     if certificado_path and os.path.exists(certificado_path):
                         with open(certificado_path, "rb") as f:
                             st.download_button(
